@@ -50,6 +50,16 @@ TODO
    ignore at the moment.  I suspect I'll never actually implement this
    since it'd probably increas our render time for a bunch, and it's not
    really important for anything you'd want to actually use this for)
+ - Properly handle on/off items (light sources), open/closed doors, etc
+ - Properly handle coloration of objects/tiles?
+ - Randomize tiles w/ multiple options (dirt, etc, seems to be randomly
+   assigned from four or five options.  The randomization is fixed-seed
+   inside Starbound itself, and I highly doubt I'd be able to get it the
+   same, but maps would probably still look nicer with them randomized)
+ - Looks like it's not actually rendering platforms, etc.
+ - How big do worlds get, anyway?  A 6000x3000 world that I loaded is
+   a bit slow but not too bad (though this is before adding in being
+   able to highlight/click on tiles)
 
 LICENSE
 -------

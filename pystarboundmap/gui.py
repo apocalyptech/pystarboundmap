@@ -45,6 +45,7 @@ base_pak = os.path.join(base_game, 'assets', 'packed.pak')
 
 # Original game (cheat, abandoned)
 #playerfile = os.path.join(base_player, '509185ee4570a66b2d514e2e4740199c.player')
+#world_name = 'Kuma Expanse IV'
 
 # Current game (Destructicus)
 playerfile = os.path.join(base_player, '1d6a362efdf17303b77e33c75f73114f.player')
@@ -718,6 +719,7 @@ class Application(QtWidgets.QApplication):
                                 #   dungeonIdGravity
                                 #print(world.metadata)
                                 cp = world.metadata['worldTemplate']['celestialParameters']
+                                print('Loaded world: {}'.format(strip_colors(cp['name'])))
                                 if strip_colors(cp['name']) == world_name:
                                     print('Found world {}, type {}, size {}x{} - Subtypes:'.format(
                                         world_name,
