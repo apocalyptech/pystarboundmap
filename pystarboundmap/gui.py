@@ -112,15 +112,51 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             self.parent.addItem(self.mod_foreground)
 
     def hoverEnterEvent(self, event=None):
+        data_table = self.parent.mainwindow.data_table
+        materials = self.parent.data.materials
+        matmods = self.parent.data.matmods
+
+        data_table.set_region(self.rx, self.ry)
+        data_table.set_tile(self.x, self.y)
+
+        if self.tile.foreground_material in materials:
+            data_table.set_material(materials[self.tile.foreground_material].name)
+        else:
+            if self.tile.foreground_material >= 0:
+                data_table.set_material('Unknown ({})'.format(self.tile.foreground_material))
+            else:
+                data_table.set_material('')
+
+        if self.tile.foreground_mod in matmods:
+            data_table.set_matmod(matmods[self.tile.foreground_mod].name)
+        else:
+            if self.tile.foreground_mod >= 0:
+                data_table.set_matmod('Unknown ({})'.format(self.tile.foreground_mod))
+            else:
+                data_table.set_matmod('')
+
+        if self.tile.background_material in materials:
+            data_table.set_back_material(materials[self.tile.background_material].name)
+        else:
+            if self.tile.background_material >= 0:
+                data_table.set_back_material('Unknown ({})'.format(self.tile.background_material))
+            else:
+                data_table.set_back_material('')
+
+        if self.tile.background_mod in matmods:
+            data_table.set_back_matmod(matmods[self.tile.background_mod].name)
+        else:
+            if self.tile.background_mod >= 0:
+                data_table.set_back_matmod('Unknown ({})'.format(self.tile.background_mod))
+            else:
+                data_table.set_back_matmod('')
+
         # TODO: Changing brush/pen to get visual highlighting makes the
         # hover events slooooow.  The highlighting lags *significantly*
         # behind the mouse.  Perhaps swapping graphics on our child
         # tiles would work instead?  (pre-brightened, like we do for
         # the background images currently, perhaps?)  Anyway, for now
         # I'm just coping without visual notification.
-        #print('Tile ({}, {}), Region ({}, {})'.format(self.x, self.y, self.rx, self.ry))
-        self.parent.mainwindow.data_table.set_region(self.rx, self.ry)
-        self.parent.mainwindow.data_table.set_tile(self.x, self.y)
         #self.setBrush(QtGui.QBrush(QtGui.QColor(255, 128, 128, 128)))
         #self.setPen(QtGui.QPen(QtGui.QColor(255, 128, 128, 128)))
         #self.setFocus()
@@ -298,7 +334,7 @@ class DataTable(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.setFixedWidth(150)
+        self.setFixedWidth(200)
 
         self.layout = QtWidgets.QGridLayout()
         self.setLayout(self.layout)
@@ -306,7 +342,12 @@ class DataTable(QtWidgets.QWidget):
         self.cur_row = 0
 
         self.region_label = self.add_row('Region')
-        self.tile_label = self.add_row('Tile')
+        self.tile_label = self.add_row('Coords')
+
+        self.mat_label = self.add_row('Fore Mat')
+        self.matmod_label = self.add_row('Fore Mod')
+        self.back_mat_label = self.add_row('Back Mat')
+        self.back_matmod_label = self.add_row('Back Mod')
 
         # Spacer at the bottom so that the other cells don't expand
         self.layout.addWidget(QtWidgets.QLabel(),
@@ -332,6 +373,18 @@ class DataTable(QtWidgets.QWidget):
 
     def set_tile(self, x, y):
         self.tile_label.setText('({}, {})'.format(x, y))
+
+    def set_material(self, material):
+        self.mat_label.setText(material)
+
+    def set_matmod(self, mod):
+        self.matmod_label.setText(mod)
+
+    def set_back_material(self, material):
+        self.back_mat_label.setText(material)
+
+    def set_back_matmod(self, mod):
+        self.back_matmod_label.setText(mod)
 
 class GUI(QtWidgets.QMainWindow):
     """
