@@ -26,11 +26,22 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
 import io
 import re
+import time
 import json
+import mmap
+import starbound
 from PIL import Image
 from PyQt5 import QtWidgets, QtGui, QtCore
+
+# Hardcoded stuff for now
+base_game = '/usr/local/games/Steam/SteamApps/common/Starbound'
+base_storage = os.path.join(base_game, 'storage')
+base_player = os.path.join(base_storage, 'player')
+base_universe = os.path.join(base_storage, 'universe')
+base_pak = os.path.join(base_game, 'assets', 'packed.pak')
 
 def read_config(config_data):
     """
@@ -366,3 +377,179 @@ class PakTree(object):
                     ext,
                     ))
         return to_ret
+
+class Player(object):
+    """
+    Wrapper class for the player save dict, to provide a helper function
+    or two.
+    """
+
+    def __init__(self, playerdict):
+        self.playerdict = playerdict
+
+    def get_systems(self):
+        """
+        Returns a list of tuples of the form:
+            ((x, y, z), systemdict)
+        Describing all systems known to this player.
+        (I'm using x, y, z because I imagine that those are maybe
+        supposed to be coordinates, but in reality I suspect they're
+        effectively random.)
+        """
+
+        # Will have to check that the universeMap dicts always has just one key
+        # (a uuid or something)
+        for k, v in self.playerdict.data['universeMap'].items():
+            # universeMap keys:
+            #   systems
+            #   teleportBookmarks
+
+            systemlist = v['systems']
+            return systemlist
+
+    def get_worlds(self, world_name=None):
+        """
+        If `world_name` is `None`, return a list of all planets known
+        to the user, as a list of tuples of the form:
+            (world_name, filename)
+
+        If a `name` is specified, return just that
+        planet, or `None`.
+        
+        Note that both modes will have to actually load in world files
+        to get the names.
+        """
+
+        planets = []
+
+        for (coords, systemdict) in self.get_systems():
+            base_system_name = '{}_{}_{}'.format(*coords)
+
+            # Nothing actually useful to us in here, it seems...
+            #with open(
+            #        os.path.join(base_universe, '{}.system'.format(base_system_name)),
+            #        'rb') as systemdf:
+            #    system = starbound.read_sbvj01(systemdf)
+            #    print(system)
+
+            # in systemdict, there's three keys:
+            #   mappedObjects: Space stations and the like, it seems
+            #   bookmarks: Bookmarks, presumably
+            #   mappedPlanets: Planets (doesn't seem to include moons?)
+            for planet in systemdict['mappedPlanets']:
+                world_filename = os.path.join(
+                        base_universe,
+                        '{}_{}.world'.format(base_system_name, planet['planet']))
+                #print('Opening {}'.format(world_filename))
+                with open(world_filename, 'rb') as worlddf:
+                    worldmm = mmap.mmap(worlddf.fileno(), 0, access=mmap.ACCESS_READ)
+                    world = starbound.World(worldmm)
+                    world.read_metadata()
+
+                    # Keys in world.metadata:
+                    #   centralStructure
+                    #   spawningEnabled
+                    #   adjustPlayerStart
+                    #   protectedDungeonIds
+                    #   playerStart
+                    #   dungeonIdBreathable
+                    #   respawnInWorld
+                    #   worldTemplate
+                    #   worldProperties
+                    #   dungeonIdGravity
+                    #print(world.metadata)
+                    cp = world.metadata['worldTemplate']['celestialParameters']
+                    name = strip_colors(cp['name'])
+                    #print('Loaded world: {}'.format(name))
+                    if world_name:
+                        if name.lower() == world_name.lower():
+                            #print('Found world {}, type {}, size {}x{} - Subtypes:'.format(
+                            #    world_name,
+                            #    cp['parameters']['worldType'],
+                            #    world.width,
+                            #    world.height,
+                            #    ))
+                            #for subtype in cp['parameters']['terrestrialType']:
+                            #    print(' * {}'.format(subtype))
+                            return world
+                    else:
+                        planets.append((name, world_filename))
+
+                    # TODO: I'm using mmap here without *really* having investigated
+                    # how to manage them properly.  Once the UI can load planets
+                    # interactively, will have to make sure that these get closed
+                    # out properly so that world data doesn't stay resident in RAM.
+                    worldmm.close()
+
+        # Return, depending on mode
+        if world_name:
+            return None
+        else:
+            return planets
+
+class StarboundData(object):
+    """
+    Master class to hold the starbound data that we're interested in.
+    """
+
+    def __init__(self, pakfile=base_pak):
+
+        # Read in the data file
+        with open(pakfile, 'rb') as pakdf:
+
+            paktree = PakTree()
+            pakdata = starbound.SBAsset6(pakdf)
+
+            # py-starbound doesn't let you "browse" inside the pakfile's
+            # internal "directory", so we're doing it by hand here
+            pakdata.read_index()
+            for path in pakdata.index.keys():
+                paktree.add_path(path)
+
+            # Load in our materials
+            self.materials = {}
+            for matname in paktree.get_all_matching_ext('/tiles/materials', '.material'):
+                matpath = '/tiles/materials/{}'.format(matname)
+                material = json.loads(pakdata.get(matpath))
+                # Ignoring other kinds of tiles for now
+                if 'classicmaterialtemplate.config' in material['renderTemplate']:
+                    self.materials[material['materialId']] = Material(material, pakdata)
+
+            # Load in our material mods.
+            self.matmods = {}
+            for matmod_name in paktree.get_all_matching_ext('/tiles/mods', '.matmod'):
+                # All matmods, at least in the base game, are classicmaterialtemplate
+                matmodpath = '/tiles/mods/{}'.format(matmod_name)
+                matmod = json.loads(pakdata.get(matmodpath))
+                self.matmods[matmod['modId']] = Matmod(matmod, pakdata)
+
+            # Load in object data
+            start = time.time()
+            self.objects = {}
+            obj_list = paktree.get_all_recurs_matching_ext('/objects', '.object')
+            for (obj_path, obj_name) in obj_list:
+                obj_full_path = '{}/{}'.format(obj_path, obj_name)
+                obj_json = read_config(pakdata.get(obj_full_path))
+                self.objects[obj_json['objectName']] = SBObject(obj_json, obj_name, obj_path, pakdata)
+            end = time.time()
+            print('Loaded objects in {} sec'.format(end-start))
+
+            #for idx, (weight, system_name) in enumerate(celestial_names['systemNames']):
+            #    if system_name == 'Fribbilus Xax':
+            #        print('Fribbilus Xax found at {}'.format(idx))
+            #        # 493
+            #        break
+            #for idx, (weight, suffix_name) in enumerate(celestial_names['systemSuffixNames']):
+            #    if suffix_name == 'Swarm':
+            #        print('Swarm found at {}'.format(idx))
+            #        # 29
+            #        break
+
+    def get_player(self, player_file):
+        """
+        Returns player data, given the specified player file
+        """
+        player = None
+        with open(os.path.join(base_player, player_file), 'rb') as playerdf:
+            player = Player(starbound.read_sbvj01(playerdf))
+        return player

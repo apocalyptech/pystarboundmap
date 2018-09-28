@@ -27,26 +27,17 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
-import time
-import mmap
-import json
-import starbound
 from PyQt5 import QtWidgets, QtGui, QtCore
-from .data import read_config, strip_colors, Material, Matmod, SBObject, PakTree
+from .data import StarboundData
 
-# Hardcoded stuff for now
-base_game = '/usr/local/games/Steam/SteamApps/common/Starbound'
-base_storage = os.path.join(base_game, 'storage')
-base_player = os.path.join(base_storage, 'player')
-base_universe = os.path.join(base_storage, 'universe')
-base_pak = os.path.join(base_game, 'assets', 'packed.pak')
+# Hardcoded, for now:
 
 # Original game (cheat, abandoned)
-#playerfile = os.path.join(base_player, '509185ee4570a66b2d514e2e4740199c.player')
+#playerfile = '509185ee4570a66b2d514e2e4740199c.player'
 #world_name = 'Kuma Expanse IV'
 
 # Current game (Destructicus)
-playerfile = os.path.join(base_player, '1d6a362efdf17303b77e33c75f73114f.player')
+playerfile = '1d6a362efdf17303b77e33c75f73114f.player'
 #world_name = 'Fribbilus Xax Swarm II'
 world_name = 'Fribbilus Xax Swarm IV'
 
@@ -85,9 +76,9 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         self.setZValue(Constants.z_overlay)
 
         # Convenience vars
-        materials = self.parent.mainwindow.materials
-        matmods = self.parent.mainwindow.matmods
-        world = self.parent.mainwindow.world
+        materials = self.parent.data.materials
+        matmods = self.parent.data.matmods
+        world = self.parent.world
 
         # Materials (background)
         if tile.background_material in materials and tile.foreground_material not in materials:
@@ -140,43 +131,38 @@ class MapScene(QtWidgets.QGraphicsScene):
     Our main scene which renders the map.
     """
 
-    def __init__(self, parent, mainwindow):
+    def __init__(self, parent, mainwindow, data):
 
         super().__init__(parent)
         self.parent = parent
         self.mainwindow = mainwindow
-        self.load_map()
+        self.data = data
+        self.world = None
 
-    def load_map(self):
+    def load_map(self, world):
 
-        # Just draw the starting region, as a start
-        #x, y = self.mainwindow.world.metadata['playerStart']
-        #rx, ry = int(x // 32), int(y // 32)
-        #print('Player start at ({}, {}), region ({}, {})'.format(
-        #    x, y,
-        #    rx, ry,
-        #    ))
-        #self.draw_region(rx, ry)
+        # Store the world reference
+        self.world = world
 
         # Draw the whole map.  Here we go!
-
-        for (rx, ry) in self.mainwindow.world.get_all_regions_with_tiles():
+        for (rx, ry) in world.get_all_regions_with_tiles():
             self.draw_region(rx, ry)
 
-        # We'll have to see if this is actually necessary or not.
-        # I suspect not, really.
-        #self.setSceneRect(QtCore.QRectF(start_x, start_y, 256, 256))
+        # For now, center on the starting region
+        # (this doesn't seem *totally* right, though perhaps the player
+        # technically starts in the air a bit?)
+        (start_x, start_y) = self.world.metadata['playerStart']
+        self.parent.centerOn(start_x*8, (self.world.height*8)-(start_y*8))
 
     def draw_region(self, rx, ry):
         """
         Draws the specified region (if we can)
         """
         # Some convenience vars
-        pakdata = self.mainwindow.pakdata
-        materials = self.mainwindow.materials
-        matmods = self.mainwindow.matmods
-        objects = self.mainwindow.objects
-        world = self.mainwindow.world
+        materials = self.data.materials
+        matmods = self.data.matmods
+        objects = self.data.objects
+        world = self.world
 
         # Get tiles
         try:
@@ -250,11 +236,11 @@ class MapArea(QtWidgets.QGraphicsView):
     Main area rendering the map
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent, data):
 
         super().__init__(parent)
         self.mainwindow = parent
-        self.scene = MapScene(self, parent)
+        self.scene = MapScene(self, parent, data)
         self.setScene(self.scene)
         self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(200, 200, 200)))
         self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
@@ -264,14 +250,22 @@ class GUI(QtWidgets.QMainWindow):
     Main application window
     """
 
-    def __init__(self, pakdata, materials, matmods, objects, world):
+    def __init__(self):
         super().__init__()
-        self.pakdata = pakdata
-        self.materials = materials
-        self.matmods = matmods
-        self.objects = objects
-        self.world = world
+
+        # Load data.  This more technically belongs in the Application
+        # class but whatever.
+        self.data = StarboundData()
+
+        # Initialization stuff
+        self.world = None
         self.initUI()
+
+        # For now, hardcoded loading of a specific map
+        self.load_map()
+
+        # Show
+        self.show()
 
     def initUI(self):
 
@@ -281,7 +275,7 @@ class GUI(QtWidgets.QMainWindow):
         filemenu.addAction('&Quit', self.action_quit, 'Ctrl+Q')
 
         # Main Widget
-        self.maparea = MapArea(self)
+        self.maparea = MapArea(self, self.data)
         self.scene = self.maparea.scene
         self.setCentralWidget(self.maparea)
 
@@ -290,14 +284,26 @@ class GUI(QtWidgets.QMainWindow):
         self.resize(900, 700)
         self.setWindowTitle('Starbound Mapper')
 
-        # Show
-        self.show()
-
     def action_quit(self):
         """
         Handle our "Quit" action.
         """
         self.close()
+
+    def load_map(self):
+        """
+        Hardcoded for now
+        """
+
+        player = self.data.get_player(playerfile)
+        if player:
+            self.world = player.get_worlds(world_name)
+
+        if self.world:
+            self.scene.load_map(self.world)
+        else:
+            # TODO: Once we have interactive stuff, handle this better.
+            raise Exception('World not found')
 
 class Application(QtWidgets.QApplication):
     """
@@ -306,139 +312,5 @@ class Application(QtWidgets.QApplication):
 
     def __init__(self):
         super().__init__([])
+        self.app = GUI()
 
-        # Read in the data file
-        with open(base_pak, 'rb') as pakdf:
-
-            paktree = PakTree()
-            pakdata = starbound.SBAsset6(pakdf)
-
-            # py-starbound doesn't let you "browse" inside the pakfile's
-            # internal "directory", so we're doing it by hand here
-            pakdata.read_index()
-            for path in pakdata.index.keys():
-                paktree.add_path(path)
-
-            # Load in our materials
-            materials = {}
-            for matname in paktree.get_all_matching_ext('/tiles/materials', '.material'):
-                matpath = '/tiles/materials/{}'.format(matname)
-                material = json.loads(pakdata.get(matpath))
-                # Ignoring other kinds of tiles for now
-                if 'classicmaterialtemplate.config' in material['renderTemplate']:
-                    materials[material['materialId']] = Material(material, pakdata)
-
-            # Load in our material mods.
-            matmods = {}
-            for matmod_name in paktree.get_all_matching_ext('/tiles/mods', '.matmod'):
-                # All matmods, at least in the base game, are classicmaterialtemplate
-                matmodpath = '/tiles/mods/{}'.format(matmod_name)
-                matmod = json.loads(pakdata.get(matmodpath))
-                matmods[matmod['modId']] = Matmod(matmod, pakdata)
-
-            # Load in object data
-            start = time.time()
-            objects = {}
-            obj_list = paktree.get_all_recurs_matching_ext('/objects', '.object')
-            for (obj_path, obj_name) in obj_list:
-                obj_full_path = '{}/{}'.format(obj_path, obj_name)
-                obj_json = read_config(pakdata.get(obj_full_path))
-                objects[obj_json['objectName']] = SBObject(obj_json, obj_name, obj_path, pakdata)
-            end = time.time()
-            print('Loaded objects in {} sec'.format(end-start))
-
-            #for idx, (weight, system_name) in enumerate(celestial_names['systemNames']):
-            #    if system_name == 'Fribbilus Xax':
-            #        print('Fribbilus Xax found at {}'.format(idx))
-            #        # 493
-            #        break
-            #for idx, (weight, suffix_name) in enumerate(celestial_names['systemSuffixNames']):
-            #    if suffix_name == 'Swarm':
-            #        print('Swarm found at {}'.format(idx))
-            #        # 29
-            #        break
-
-            with open(playerfile, 'rb') as playerdf:
-                player = starbound.read_sbvj01(playerdf)
-                print('Showing data for {}'.format(player.data['identity']['name']))
-                # keys in player.data:
-                #   movementController
-                #   uuid
-                #   modeType
-                #   description
-                #   statusController
-                #   deployment
-                #   inventory
-                #   techs
-                #   techController
-                #   quests
-                #   universeMap
-                #   codexes
-                #   aiState
-                #   companions
-                #   blueprints
-                #   identity
-                #   team
-                #   log
-                #   shipUpgrades
-
-                # Will have to check that the universeMap dicts always has just one key
-                # (a uuid or something)
-                for k, v in player.data['universeMap'].items():
-                    # universeMap keys:
-                    #   systems
-                    #   teleportBookmarks
-
-                    systemlist = v['systems']
-                    for (coords, systemdict) in systemlist:
-                        base_system_name = '{}_{}_{}'.format(*coords)
-
-                        # Nothing actually useful to us in here, it seems...
-                        #with open(
-                        #        os.path.join(base_universe, '{}.system'.format(base_system_name)),
-                        #        'rb') as systemdf:
-                        #    system = starbound.read_sbvj01(systemdf)
-                        #    print(system)
-
-                        # in systemdict, there's three keys:
-                        #   mappedObjects: Space stations and the like, it seems
-                        #   bookmarks: Bookmarks, presumably
-                        #   mappedPlanets: Planets (doesn't seem to include moons?)
-                        for planet in systemdict['mappedPlanets']:
-                            world_filename = os.path.join(
-                                    base_universe,
-                                    '{}_{}.world'.format(base_system_name, planet['planet']))
-                            print('Opening {}'.format(world_filename))
-                            with open(world_filename, 'rb') as worlddf:
-                                worldmm = mmap.mmap(worlddf.fileno(), 0, access=mmap.ACCESS_READ)
-                                world = starbound.World(worldmm)
-                                world.read_metadata()
-                                # Keys in world.metadata:
-                                #   centralStructure
-                                #   spawningEnabled
-                                #   adjustPlayerStart
-                                #   protectedDungeonIds
-                                #   playerStart
-                                #   dungeonIdBreathable
-                                #   respawnInWorld
-                                #   worldTemplate
-                                #   worldProperties
-                                #   dungeonIdGravity
-                                #print(world.metadata)
-                                cp = world.metadata['worldTemplate']['celestialParameters']
-                                print('Loaded world: {}'.format(strip_colors(cp['name'])))
-                                if strip_colors(cp['name']) == world_name:
-                                    print('Found world {}, type {}, size {}x{} - Subtypes:'.format(
-                                        world_name,
-                                        cp['parameters']['worldType'],
-                                        world.width,
-                                        world.height,
-                                        ))
-                                    for subtype in cp['parameters']['terrestrialType']:
-                                        print(' * {}'.format(subtype))
-
-                                    self.app = GUI(pakdata, materials, matmods, objects, world)
-                                    return
-
-        # If we got here, we didn't find what we wanted
-        raise Exception('World not found')
