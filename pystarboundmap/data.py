@@ -34,7 +34,7 @@ import json
 import mmap
 import starbound
 from PIL import Image
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtGui
 
 # Hardcoded stuff for now
 base_game = '/usr/local/games/Steam/SteamApps/common/Starbound'
@@ -532,7 +532,7 @@ class StarboundData(object):
                 obj_json = read_config(pakdata.get(obj_full_path))
                 self.objects[obj_json['objectName']] = SBObject(obj_json, obj_name, obj_path, pakdata)
             end = time.time()
-            print('Loaded objects in {} sec'.format(end-start))
+            print('Loaded objects in {:.1f} sec'.format(end-start))
 
             #for idx, (weight, system_name) in enumerate(celestial_names['systemNames']):
             #    if system_name == 'Fribbilus Xax':

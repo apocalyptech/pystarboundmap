@@ -27,6 +27,8 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import sys
+import time
 from PyQt5 import QtWidgets, QtGui, QtCore
 from .data import StarboundData
 
@@ -144,15 +146,55 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Store the world reference
         self.world = world
 
+        # Get a list of all regions so we know the count and can draw a
+        # QProgressDialog usefully
+        regions = world.get_all_regions_with_tiles()
+        print('{} regions to load'.format(len(regions)))
+
+        # Get all pending app events out of the way
+        self.mainwindow.app.processEvents()
+
+        # Hide the main qgraphicsview while we're loading
+        self.parent.hide()
+
+        # Set up the QProgressDialog
+        qpg = QtWidgets.QProgressDialog(self.mainwindow)
+        qpg.setWindowTitle('Loading World')
+        qpg.setLabelText('Loading World')
+        qpg.setRange(0, len(regions))
+        qpg.setValue(0)
+        qpg.setWindowModality(QtCore.Qt.WindowModal)
+        qpg.setMinimumSize(300, 100)
+        qpg.show()
+
         # Draw the whole map.  Here we go!
-        for (rx, ry) in world.get_all_regions_with_tiles():
+        start = time.time()
+        for idx, (rx, ry) in enumerate(regions):
             self.draw_region(rx, ry)
+            # mod value has been tweaked a bit to find something that doesn't
+            # affect load performance much but still updates reasonably quickly.
+            # Obviously that depends on box performance a bit; this value seems
+            # all right on my CPU, at least.
+            if (idx % 50) == 0:
+                qpg.setValue(idx)
+                self.mainwindow.app.processEvents()
+                if qpg.wasCanceled():
+                    # TODO: handle this better
+                    sys.exit(1)
+        end = time.time()
+        print('Loaded map in {:.1f} secs'.format(end-start))
+
+        # Close the progress dialog
+        qpg.close()
 
         # For now, center on the starting region
         # (this doesn't seem *totally* right, though perhaps the player
         # technically starts in the air a bit?)
         (start_x, start_y) = self.world.metadata['playerStart']
         self.parent.centerOn(start_x*8, (self.world.height*8)-(start_y*8))
+
+        # Show the main qgraphicsview once we're done
+        self.parent.show()
 
     def draw_region(self, rx, ry):
         """
@@ -250,8 +292,10 @@ class GUI(QtWidgets.QMainWindow):
     Main application window
     """
 
-    def __init__(self):
+    def __init__(self, app):
         super().__init__()
+
+        self.app = app
 
         # Load data.  This more technically belongs in the Application
         # class but whatever.
@@ -261,11 +305,11 @@ class GUI(QtWidgets.QMainWindow):
         self.world = None
         self.initUI()
 
+        # Show ourselves
+        self.show()
+
         # For now, hardcoded loading of a specific map
         self.load_map()
-
-        # Show
-        self.show()
 
     def initUI(self):
 
@@ -312,5 +356,5 @@ class Application(QtWidgets.QApplication):
 
     def __init__(self):
         super().__init__([])
-        self.app = GUI()
+        self.app = GUI(self)
 

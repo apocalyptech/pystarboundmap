@@ -34,7 +34,7 @@ TODO
    - `+`/`-` via keyboard
  - Click-to-drag
  - Open file menu
- - Progress bars while loading stuff
+ - Progress bar while loading resources
  - Search for item types (ores, quest-related things?)
  - Visualization of explored areas (as defined by light sources)
  - Remember window geometry between runs
@@ -45,6 +45,16 @@ TODO
    - Manually choose install dir, regardless
  - Support for mods
  - Performance improvements
+   - Only load/render what's actually on the screen (and maybe a few
+     screenfuls in each direction, so that ideally there's not a lot
+     of pop-in while scrolling?)
+   - Load more of the map in the background, maybe, in addition to
+     the above?
+   - I feel like our graphics processing could be streamlined - we're
+     going to/from PNGs constantly, perhaps there's a more efficient
+     format to store in memory?
+   - Though really I should profile the thing to find out where it's
+     actually spending its time, rather than just guessing.
  - Toggles for various element types?
  - Fancier rendering?  (base map materials have "edges" which we completely
    ignore at the moment.  I suspect I'll never actually implement this
