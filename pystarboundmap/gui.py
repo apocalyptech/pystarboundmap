@@ -164,18 +164,22 @@ class GUITile(QtWidgets.QGraphicsRectItem):
     Hoverable area which the user can click on for info, etc.
     """
 
-    def __init__(self, parent, tile, start_x, start_y):
+    def __init__(self, parent, tile, x, y, rx, ry, gui_x, gui_y):
         super().__init__()
         self.parent = parent
         self.tile = tile
-        self.start_x = start_x
-        self.start_y = start_y
-        #self.setAcceptHoverEvents(True)
+        self.x = x
+        self.y = y
+        self.rx = rx
+        self.ry = ry
+        self.gui_x = gui_x
+        self.gui_y = gui_y
+        self.setAcceptHoverEvents(True)
         #self.setFlags(self.ItemIsFocusable)
         self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
         self.setRect(0, 0, 8, 8)
-        self.setPos(start_x, start_y)
+        self.setPos(gui_x, gui_y)
         self.setZValue(Constants.z_overlay)
 
         # Convenience vars
@@ -186,33 +190,39 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         # Materials (background)
         if tile.background_material in materials and tile.foreground_material not in materials:
             self.material_background = QtWidgets.QGraphicsPixmapItem(materials[tile.background_material].bgimage)
-            self.material_background.setPos(start_x, start_y)
+            self.material_background.setPos(gui_x, gui_y)
             self.material_background.setZValue(Constants.z_background)
             self.parent.addItem(self.material_background)
 
         # Matmods (background)
         if tile.background_mod in matmods and tile.foreground_material not in materials:
             self.mod_background = QtWidgets.QGraphicsPixmapItem(matmods[tile.background_mod].bgimage)
-            self.mod_background.setPos(start_x-4, start_y-4)
+            self.mod_background.setPos(gui_x-4, gui_y-4)
             self.mod_background.setZValue(Constants.z_background_mod)
             self.parent.addItem(self.mod_background)
 
         # Materials (foreground)
         if tile.foreground_material in materials:
             self.material_foreground = QtWidgets.QGraphicsPixmapItem(materials[tile.foreground_material].image)
-            self.material_foreground.setPos(start_x, start_y)
+            self.material_foreground.setPos(gui_x, gui_y)
             self.material_foreground.setZValue(Constants.z_foreground)
             self.parent.addItem(self.material_foreground)
 
         # Matmods (foreground)
         if tile.foreground_mod in matmods:
             self.mod_foreground = QtWidgets.QGraphicsPixmapItem(matmods[tile.foreground_mod].image)
-            self.mod_foreground.setPos(start_x-4, start_y-4)
+            self.mod_foreground.setPos(gui_x-4, gui_y-4)
             self.mod_foreground.setZValue(Constants.z_foreground_mod)
             self.parent.addItem(self.mod_foreground)
 
     def hoverEnterEvent(self, event=None):
-        pass
+        # TODO: Changing brush/pen to get visual highlighting makes the
+        # hover events slooooow.  The highlighting lags *significantly*
+        # behind the mouse.  Perhaps swapping graphics on our child
+        # tiles would work instead?  (pre-brightened, like we do for
+        # the background images currently, perhaps?)  Anyway, for now
+        # I'm just coping without visual notification.
+        print('Tile ({}, {}), Region ({}, {})'.format(self.x, self.y, self.rx, self.ry))
         #self.setBrush(QtGui.QBrush(QtGui.QColor(255, 128, 128, 128)))
         #self.setPen(QtGui.QPen(QtGui.QColor(255, 128, 128, 128)))
         #self.setFocus()
@@ -247,6 +257,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         #self.draw_region(rx, ry)
 
         # Draw the whole map.  Here we go!
+
         for (rx, ry) in self.mainwindow.world.get_all_regions_with_tiles():
             self.draw_region(rx, ry)
 
@@ -273,11 +284,13 @@ class MapScene(QtWidgets.QGraphicsScene):
             return
 
         # "real" coordinates
-        start_x = rx*256
-        start_y = world.height-ry*256
+        base_x = rx*32
+        gui_x = base_x*8
+        base_y = ry*32
+        gui_y = (world.height*8)-(base_y*8)
 
         # Background for our drawn area (black)
-        region_bak = self.addRect(start_x, start_y, 255, 255,
+        region_bak = self.addRect(gui_x, gui_y, 255, 255,
                 QtGui.QPen(QtGui.QColor(0, 0, 0)),
                 QtGui.QBrush(QtGui.QColor(0, 0, 0)),
                 )
@@ -287,7 +300,10 @@ class MapScene(QtWidgets.QGraphicsScene):
         cur_row = 31
         cur_col = 0
         for tile in tiles:
-            self.addItem(GUITile(self, tile, start_x+cur_col*8, start_y+cur_row*8))
+            self.addItem(GUITile(self, tile,
+                base_x+cur_col, base_y+31-cur_row,
+                rx, ry,
+                gui_x+cur_col*8, gui_y+cur_row*8))
             cur_col += 1
             if cur_col == 32:
                 cur_col = 0
@@ -314,7 +330,7 @@ class MapScene(QtWidgets.QGraphicsScene):
                     #print('Drawing w/ coords {}, {}'.format(obj_x, obj_y))
                     #print('Adjusting for rx, ry {}, {}: {}, {}'.format(32*rx, 32*ry, obj_x-(32*rx), obj_y-(32*ry)))
                     #print('Offset: {}, {}'.format(offset_x, offset_y))
-                    qpmi.setPos(start_x+(obj_x-(32*rx))*8+offset_x, start_y+(32-(obj_y-(32*ry))-2)*8+offset_y)
+                    qpmi.setPos(gui_x+(obj_x-(32*rx))*8+offset_x, gui_y+(32-(obj_y-(32*ry))-2)*8+offset_y)
                     qpmi.setZValue(Constants.z_objects)
                     self.addItem(qpmi)
             elif (e.name == 'PlantEntity'
