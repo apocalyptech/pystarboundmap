@@ -40,8 +40,9 @@ from .data import StarboundData
 
 # Current game (Destructicus)
 playerfile = '1d6a362efdf17303b77e33c75f73114f.player'
+world_name = 'Fribbilus Xax Swarm I'
 #world_name = 'Fribbilus Xax Swarm II'
-world_name = 'Fribbilus Xax Swarm IV'
+#world_name = 'Fribbilus Xax Swarm IV'
 
 class Constants(object):
 
@@ -117,7 +118,9 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         # tiles would work instead?  (pre-brightened, like we do for
         # the background images currently, perhaps?)  Anyway, for now
         # I'm just coping without visual notification.
-        print('Tile ({}, {}), Region ({}, {})'.format(self.x, self.y, self.rx, self.ry))
+        #print('Tile ({}, {}), Region ({}, {})'.format(self.x, self.y, self.rx, self.ry))
+        self.parent.mainwindow.data_table.set_region(self.rx, self.ry)
+        self.parent.mainwindow.data_table.set_tile(self.x, self.y)
         #self.setBrush(QtGui.QBrush(QtGui.QColor(255, 128, 128, 128)))
         #self.setPen(QtGui.QPen(QtGui.QColor(255, 128, 128, 128)))
         #self.setFocus()
@@ -287,6 +290,49 @@ class MapArea(QtWidgets.QGraphicsView):
         self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(200, 200, 200)))
         self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 
+class DataTable(QtWidgets.QWidget):
+    """
+    Widget to show information about the currently-hovered tile
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.setFixedWidth(150)
+
+        self.layout = QtWidgets.QGridLayout()
+        self.setLayout(self.layout)
+
+        self.cur_row = 0
+
+        self.region_label = self.add_row('Region')
+        self.tile_label = self.add_row('Tile')
+
+        # Spacer at the bottom so that the other cells don't expand
+        self.layout.addWidget(QtWidgets.QLabel(),
+                self.cur_row, 0,
+                1, 2)
+        self.layout.setRowStretch(self.cur_row, 1)
+
+    def add_row(self, label):
+        label = QtWidgets.QLabel('{}:'.format(label))
+        label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self.layout.addWidget(label,
+                self.cur_row, 0,
+                QtCore.Qt.AlignRight,
+                )
+        data_label = QtWidgets.QLabel()
+        data_label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Minimum)
+        self.layout.addWidget(data_label, self.cur_row, 1)
+        self.cur_row += 1
+        return data_label
+
+    def set_region(self, rx, ry):
+        self.region_label.setText('({}, {})'.format(rx, ry))
+
+    def set_tile(self, x, y):
+        self.tile_label.setText('({}, {})'.format(x, y))
+
 class GUI(QtWidgets.QMainWindow):
     """
     Main application window
@@ -318,14 +364,26 @@ class GUI(QtWidgets.QMainWindow):
         filemenu = menubar.addMenu('&File')
         filemenu.addAction('&Quit', self.action_quit, 'Ctrl+Q')
 
+        # HBox to store our main widgets
+        w = QtWidgets.QWidget()
+        hbox = QtWidgets.QHBoxLayout()
+        w.setLayout(hbox)
+
+        # table to store data display
+        self.data_table = DataTable(self)
+        hbox.addWidget(self.data_table, 0, QtCore.Qt.AlignLeft)
+
         # Main Widget
         self.maparea = MapArea(self, self.data)
         self.scene = self.maparea.scene
-        self.setCentralWidget(self.maparea)
+        hbox.addWidget(self.maparea, 1)
+
+        # Central Widget
+        self.setCentralWidget(w)
 
         # Main window
-        self.setMinimumSize(900, 700)
-        self.resize(900, 700)
+        self.setMinimumSize(1050, 700)
+        self.resize(1050, 700)
         self.setWindowTitle('Starbound Mapper')
 
     def action_quit(self):
