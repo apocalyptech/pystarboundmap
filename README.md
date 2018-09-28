@@ -66,10 +66,10 @@ TODO
    assigned from four or five options.  The randomization is fixed-seed
    inside Starbound itself, and I highly doubt I'd be able to get it the
    same, but maps would probably still look nicer with them randomized)
- - Looks like it's not actually rendering platforms, etc.
  - How big do worlds get, anyway?  A 6000x3000 world that I loaded is
    a bit slow but not too bad (though this is before adding in being
    able to highlight/click on tiles)
+ - Figure out the rest of our material rendering templates
 
 LICENSE
 -------

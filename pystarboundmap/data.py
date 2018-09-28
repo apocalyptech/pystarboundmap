@@ -149,14 +149,14 @@ class Material(object):
     NOTE: In addition to the above, this only supports classicmaterialtemplate
     """
 
-    def __init__(self, info, pakdata):
+    def __init__(self, info, path, pakdata, crop_parameters):
         self.info = info
         self.name = info['materialName']
         df = io.BytesIO(pakdata.get(
-                '/tiles/materials/{}'.format(info['renderParameters']['texture'])
+                '{}/{}'.format(path, info['renderParameters']['texture'])
                 ))
         full_image = Image.open(df)
-        cropped = full_image.crop((4, 12, 12, 20))
+        cropped = full_image.crop(crop_parameters)
         df = io.BytesIO()
         cropped.save(df, format='png')
         #self.image = df.getvalue()
@@ -508,12 +508,20 @@ class StarboundData(object):
 
             # Load in our materials
             self.materials = {}
-            for matname in paktree.get_all_matching_ext('/tiles/materials', '.material'):
-                matpath = '/tiles/materials/{}'.format(matname)
+            obj_list = paktree.get_all_recurs_matching_ext('/tiles', '.material')
+            for (obj_path, obj_name) in obj_list:
+                matpath = '{}/{}'.format(obj_path, obj_name)
                 material = json.loads(pakdata.get(matpath))
-                # Ignoring other kinds of tiles for now
-                if 'classicmaterialtemplate.config' in material['renderTemplate']:
-                    self.materials[material['materialId']] = Material(material, pakdata)
+                if 'renderTemplate' in material:
+                    if material['renderTemplate'] == '/tiles/classicmaterialtemplate.config':
+                        self.materials[material['materialId']] = Material(material, obj_path, pakdata, (4, 12, 12, 20))
+                    elif material['renderTemplate'] == '/tiles/platformtemplate.config':
+                        self.materials[material['materialId']] = Material(material, obj_path, pakdata, (8, 0, 16, 8))
+                    else:
+                        # TODO: Figure these out
+                        print('Unhandled material render template: {}'.format(material['renderTemplate']))
+                else:
+                    print('No render template found for {}'.format(matpath))
 
             # Load in our material mods.
             self.matmods = {}
