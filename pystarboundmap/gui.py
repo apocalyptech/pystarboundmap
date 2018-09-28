@@ -148,6 +148,81 @@ def strip_colors(input_string):
     """
     return re.sub('\^\w+?;', '', input_string)
 
+class Constants(object):
+
+    (z_black,
+        z_background,
+        z_background_mod,
+        z_foreground,
+        z_objects,
+        z_foreground_mod,
+        z_overlay,
+        ) = range(7)
+
+class GUITile(QtWidgets.QGraphicsRectItem):
+    """
+    Hoverable area which the user can click on for info, etc.
+    """
+
+    def __init__(self, parent, tile, start_x, start_y):
+        super().__init__()
+        self.parent = parent
+        self.tile = tile
+        self.start_x = start_x
+        self.start_y = start_y
+        #self.setAcceptHoverEvents(True)
+        #self.setFlags(self.ItemIsFocusable)
+        self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
+        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        self.setRect(0, 0, 8, 8)
+        self.setPos(start_x, start_y)
+        self.setZValue(Constants.z_overlay)
+
+        # Convenience vars
+        materials = self.parent.mainwindow.materials
+        matmods = self.parent.mainwindow.matmods
+        world = self.parent.mainwindow.world
+
+        # Materials (background)
+        if tile.background_material in materials and tile.foreground_material not in materials:
+            self.material_background = QtWidgets.QGraphicsPixmapItem(materials[tile.background_material].bgimage)
+            self.material_background.setPos(start_x, start_y)
+            self.material_background.setZValue(Constants.z_background)
+            self.parent.addItem(self.material_background)
+
+        # Matmods (background)
+        if tile.background_mod in matmods and tile.foreground_material not in materials:
+            self.mod_background = QtWidgets.QGraphicsPixmapItem(matmods[tile.background_mod].bgimage)
+            self.mod_background.setPos(start_x-4, start_y-4)
+            self.mod_background.setZValue(Constants.z_background_mod)
+            self.parent.addItem(self.mod_background)
+
+        # Materials (foreground)
+        if tile.foreground_material in materials:
+            self.material_foreground = QtWidgets.QGraphicsPixmapItem(materials[tile.foreground_material].image)
+            self.material_foreground.setPos(start_x, start_y)
+            self.material_foreground.setZValue(Constants.z_foreground)
+            self.parent.addItem(self.material_foreground)
+
+        # Matmods (foreground)
+        if tile.foreground_mod in matmods:
+            self.mod_foreground = QtWidgets.QGraphicsPixmapItem(matmods[tile.foreground_mod].image)
+            self.mod_foreground.setPos(start_x-4, start_y-4)
+            self.mod_foreground.setZValue(Constants.z_foreground_mod)
+            self.parent.addItem(self.mod_foreground)
+
+    def hoverEnterEvent(self, event=None):
+        pass
+        #self.setBrush(QtGui.QBrush(QtGui.QColor(255, 128, 128, 128)))
+        #self.setPen(QtGui.QPen(QtGui.QColor(255, 128, 128, 128)))
+        #self.setFocus()
+
+    def hoverLeaveEvent(self, event=None):
+        pass
+        #self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
+        #self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        #self.clearFocus()
+
 class MapScene(QtWidgets.QGraphicsScene):
     """
     Our main scene which renders the map.
@@ -156,6 +231,7 @@ class MapScene(QtWidgets.QGraphicsScene):
     def __init__(self, parent, mainwindow):
 
         super().__init__(parent)
+        self.parent = parent
         self.mainwindow = mainwindow
         self.load_map()
 
@@ -201,45 +277,17 @@ class MapScene(QtWidgets.QGraphicsScene):
         start_y = world.height-ry*256
 
         # Background for our drawn area (black)
-        self.addRect(start_x, start_y, 255, 255,
+        region_bak = self.addRect(start_x, start_y, 255, 255,
                 QtGui.QPen(QtGui.QColor(0, 0, 0)),
                 QtGui.QBrush(QtGui.QColor(0, 0, 0)),
                 )
+        region_bak.setZValue(Constants.z_black)
 
-        # Materials (background)
+        # Tiles!
         cur_row = 31
         cur_col = 0
         for tile in tiles:
-            if tile.background_material in materials and tile.foreground_material not in materials:
-                qpmi = QtWidgets.QGraphicsPixmapItem(materials[tile.background_material].bgimage)
-                qpmi.setPos(start_x+cur_col*8, start_y+cur_row*8)
-                self.addItem(qpmi)
-            cur_col += 1
-            if cur_col == 32:
-                cur_col = 0
-                cur_row -= 1
-
-        # Matmods (background)
-        cur_row = 31
-        cur_col = 0
-        for tile in tiles:
-            if tile.background_mod in matmods and tile.foreground_material not in materials:
-                qpmi = QtWidgets.QGraphicsPixmapItem(matmods[tile.background_mod].bgimage)
-                qpmi.setPos(start_x+cur_col*8-4, start_y+cur_row*8-4)
-                self.addItem(qpmi)
-            cur_col += 1
-            if cur_col == 32:
-                cur_col = 0
-                cur_row -= 1
-
-        # Materials (foreground)
-        cur_row = 31
-        cur_col = 0
-        for tile in tiles:
-            if tile.foreground_material in materials:
-                qpmi = QtWidgets.QGraphicsPixmapItem(materials[tile.foreground_material].image)
-                qpmi.setPos(start_x+cur_col*8, start_y+cur_row*8)
-                self.addItem(qpmi)
+            self.addItem(GUITile(self, tile, start_x+cur_col*8, start_y+cur_row*8))
             cur_col += 1
             if cur_col == 32:
                 cur_col = 0
@@ -253,10 +301,7 @@ class MapScene(QtWidgets.QGraphicsScene):
             pass
 
         for e in entities:
-            if e.name == 'PlantEntity':
-                # Ignoring for now
-                pass
-            elif e.name == 'ObjectEntity':
+            if e.name == 'ObjectEntity':
                 # Woo
                 obj_name = e.data['name']
                 obj_orientation = e.data['orientationIndex']
@@ -270,34 +315,17 @@ class MapScene(QtWidgets.QGraphicsScene):
                     #print('Adjusting for rx, ry {}, {}: {}, {}'.format(32*rx, 32*ry, obj_x-(32*rx), obj_y-(32*ry)))
                     #print('Offset: {}, {}'.format(offset_x, offset_y))
                     qpmi.setPos(start_x+(obj_x-(32*rx))*8+offset_x, start_y+(32-(obj_y-(32*ry))-2)*8+offset_y)
+                    qpmi.setZValue(Constants.z_objects)
                     self.addItem(qpmi)
+            elif (e.name == 'PlantEntity'
+                    or e.name == 'MonsterEntity'
+                    or e.name == 'NpcEntity'
+                    or e.name == 'StagehandEntity'
+                    or e.name == 'ItemDropEntity'):
+                # Ignoring for now
+                pass
             else:
                 print('Unknown entity type: {}'.format(e.name))
-
-        #keycounts = {}
-        #for idx, e in enumerate(entities):
-        #    print('Entity {}'.format(idx))
-        #    for k in e.data.keys():
-        #        print(' * {}'.format(k))
-        #        if k not in keycounts:
-        #            keycounts[k] = 1
-        #        else:
-        #            keycounts[k] += 1
-        #for k, v in keycounts.items():
-        #    print('{}: {}'.format(k, v))
-
-        # Matmods (foreground)
-        cur_row = 31
-        cur_col = 0
-        for tile in tiles:
-            if tile.foreground_mod in matmods:
-                qpmi = QtWidgets.QGraphicsPixmapItem(matmods[tile.foreground_mod].image)
-                qpmi.setPos(start_x+cur_col*8-4, start_y+cur_row*8-4)
-                self.addItem(qpmi)
-            cur_col += 1
-            if cur_col == 32:
-                cur_col = 0
-                cur_row -= 1
 
 class MapArea(QtWidgets.QGraphicsView):
     """
