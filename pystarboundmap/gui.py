@@ -274,6 +274,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         (start_x, start_y) = self.world.metadata['playerStart']
         self.parent.centerOn(start_x*8, (self.world.height*8)-(start_y*8))
 
+        # Focus the qgraphicsview
+        self.parent.setFocus()
+
         # Show the main qgraphicsview once we're done
         self.parent.show()
 
