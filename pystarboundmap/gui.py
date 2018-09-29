@@ -180,6 +180,48 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.data = data
         self.world = None
 
+        self.dragging = False
+
+    def mousePressEvent(self, event):
+        """
+        Handle a mouse press event (just dragging for now)
+        """
+        # TODO: I'll probably want to be able to click on a tile to get more
+        # info, etc, so this'll have to be smarter
+        self.dragging = True
+        self.parent.setCursor(QtCore.Qt.ClosedHandCursor)
+
+    def mouseReleaseEvent(self, event):
+        """
+        Handle a mouse release event
+        """
+        self.dragging = False
+        self.parent.unsetCursor()
+
+    def mouseMoveEvent(self, event):
+        """
+        Mouse Movement
+        """
+        if self.dragging:
+            last = event.lastScreenPos()
+            pos = event.screenPos()
+            delta_x = last.x() - pos.x()
+            delta_y = last.y() - pos.y()
+            if delta_x != 0:
+                self.dragged = True
+                sb = self.parent.horizontalScrollBar()
+                new_x = sb.value() + delta_x
+                if new_x >= sb.minimum() and new_x <= sb.maximum():
+                    sb.setValue(new_x)
+            if delta_y != 0:
+                self.dragged = True
+                sb = self.parent.verticalScrollBar()
+                new_y = sb.value() + delta_y
+                if new_y >= sb.minimum() and new_y <= sb.maximum():
+                    sb.setValue(new_y)
+        else:
+            super().mouseMoveEvent(event)
+
     def load_map(self, world):
 
         # Store the world reference

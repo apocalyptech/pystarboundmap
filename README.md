@@ -32,7 +32,6 @@ TODO
  - Zoom
    - Slider
    - `+`/`-` via keyboard
- - Click-to-drag
  - Open file menu
  - Progress bar while loading resources
  - Search for item types (ores, quest-related things?)
