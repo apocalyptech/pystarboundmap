@@ -145,8 +145,6 @@ class Material(object):
     fancy rendering options and pretending that everything is the
     very first (top left) tile, and we're not drawing edges or the
     like.
-
-    NOTE: In addition to the above, this only supports classicmaterialtemplate
     """
 
     def __init__(self, info, path, pakdata, crop_parameters):
@@ -506,6 +504,30 @@ class StarboundData(object):
             for path in pakdata.index.keys():
                 paktree.add_path(path)
 
+            # Cropping parameters for our various material templates.
+            # TODO: obviously if we want to render things *correctly*
+            # we'd have to actually parse/understand these.  Instead
+            # we're just grabbing the top-left image, basically.
+            crop_params = {
+                    '/tiles/classicmaterialtemplate.config': (4, 12, 12, 20),
+                    '/tiles/platformtemplate.config': (8, 0, 16, 8),
+                    '/tiles/girdertemplate.config': (1, 1, 9, 9),
+                    '/tiles/screwtemplate.config': (2, 14, 10, 22),
+                    '/tiles/columntemplate.config': (2, 14, 10, 22),
+                    '/tiles/rowtemplate.config': (2, 14, 10, 22),
+
+                    # Out of all of these, this will be the one that's Most
+                    # Wrong.  I think this is space station stuff
+                    '/tiles/slopedmaterialtemplate.config': (24, 0, 32, 8),
+
+                    # These two are quite wrong, of course, since they're supposed
+                    # to "join up" properly.  For pipes I chose the straight
+                    # horizontal image, though note that this'll fail for tentacle
+                    # pipes!
+                    '/tiles/pipetemplate.config': (68, 36, 76, 44),
+                    '/tiles/railtemplate.config': (3, 5, 11, 13),
+                }
+
             # Load in our materials
             self.materials = {}
             obj_list = paktree.get_all_recurs_matching_ext('/tiles', '.material')
@@ -513,12 +535,14 @@ class StarboundData(object):
                 matpath = '{}/{}'.format(obj_path, obj_name)
                 material = json.loads(pakdata.get(matpath))
                 if 'renderTemplate' in material:
-                    if material['renderTemplate'] == '/tiles/classicmaterialtemplate.config':
-                        self.materials[material['materialId']] = Material(material, obj_path, pakdata, (4, 12, 12, 20))
-                    elif material['renderTemplate'] == '/tiles/platformtemplate.config':
-                        self.materials[material['materialId']] = Material(material, obj_path, pakdata, (8, 0, 16, 8))
+                    if material['renderTemplate'] in crop_params:
+                        self.materials[material['materialId']] = Material(
+                                material,
+                                obj_path,
+                                pakdata,
+                                crop_params[material['renderTemplate']],
+                                )
                     else:
-                        # TODO: Figure these out
                         print('Unhandled material render template: {}'.format(material['renderTemplate']))
                 else:
                     print('No render template found for {}'.format(matpath))
