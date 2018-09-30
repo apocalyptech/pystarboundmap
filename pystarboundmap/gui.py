@@ -40,20 +40,21 @@ from .data import StarboundData
 
 # Current game (Destructicus)
 playerfile = '1d6a362efdf17303b77e33c75f73114f.player'
-world_name = 'Fribbilus Xax Swarm I'
+#world_name = 'Fribbilus Xax Swarm I'
 #world_name = 'Fribbilus Xax Swarm II'
-#world_name = 'Fribbilus Xax Swarm IV'
+world_name = 'Fribbilus Xax Swarm IV'
 
 class Constants(object):
 
     (z_black,
         z_background,
         z_background_mod,
+        z_plants,
         z_foreground,
         z_objects,
         z_foreground_mod,
         z_overlay,
-        ) = range(7)
+        ) = range(8)
 
 class GUITile(QtWidgets.QGraphicsRectItem):
     """
@@ -288,6 +289,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         materials = self.data.materials
         matmods = self.data.matmods
         objects = self.data.objects
+        plants = self.data.plants
         world = self.world
 
         # Get tiles
@@ -304,24 +306,24 @@ class MapScene(QtWidgets.QGraphicsScene):
         gui_y = (world.height*8)-(base_y*8)
 
         # Background for our drawn area (black)
-        region_bak = self.addRect(gui_x, gui_y, 255, 255,
+        region_bak = self.addRect(gui_x, gui_y-255, 255, 255,
                 QtGui.QPen(QtGui.QColor(0, 0, 0)),
                 QtGui.QBrush(QtGui.QColor(0, 0, 0)),
                 )
         region_bak.setZValue(Constants.z_black)
 
         # Tiles!
-        cur_row = 31
+        cur_row = 0
         cur_col = 0
         for tile in tiles:
             self.addItem(GUITile(self, tile,
-                base_x+cur_col, base_y+31-cur_row,
+                base_x+cur_col, base_y+cur_row,
                 rx, ry,
-                gui_x+cur_col*8, gui_y+cur_row*8))
+                gui_x+cur_col*8, gui_y-(cur_row+1)*8))
             cur_col += 1
             if cur_col == 32:
                 cur_col = 0
-                cur_row -= 1
+                cur_row += 1
 
         # Entities!
         entities = []
@@ -340,15 +342,28 @@ class MapScene(QtWidgets.QGraphicsScene):
                     obj = objects[obj_name]
                     (image, offset_x, offset_y) = obj.get_image(obj_orientation)
                     qpmi = QtWidgets.QGraphicsPixmapItem(image)
-                    #print('--')
-                    #print('Drawing w/ coords {}, {}'.format(obj_x, obj_y))
-                    #print('Adjusting for rx, ry {}, {}: {}, {}'.format(32*rx, 32*ry, obj_x-(32*rx), obj_y-(32*ry)))
-                    #print('Offset: {}, {}'.format(offset_x, offset_y))
-                    qpmi.setPos(gui_x+(obj_x-(32*rx))*8+offset_x, gui_y+(32-(obj_y-(32*ry))-2)*8+offset_y)
+                    qpmi.setPos(
+                            (obj_x*8) + offset_x,
+                            (world.height*8)-(obj_y*8) - offset_y - image.height(),
+                            )
                     qpmi.setZValue(Constants.z_objects)
                     self.addItem(qpmi)
-            elif (e.name == 'PlantEntity'
-                    or e.name == 'MonsterEntity'
+            elif e.name == 'PlantEntity':
+                (obj_x, obj_y) = tuple(e.data['tilePosition'])
+                for piece in e.data['pieces']:
+                    piece_img = piece['image'].split('?')[0]
+                    if piece_img in plants:
+                        img = plants[piece_img].image
+                        qpmi = QtWidgets.QGraphicsPixmapItem(img)
+                        qpmi.setPos(
+                                (obj_x*8) + (piece['offset'][0]*8),
+                                (world.height*8)-(obj_y*8) - (piece['offset'][1]*8) - img.height(),
+                                )
+                        qpmi.setZValue(Constants.z_plants)
+                        self.addItem(qpmi)
+                    else:
+                        print('not found: {}'.format(piece_img))
+            elif (e.name == 'MonsterEntity'
                     or e.name == 'NpcEntity'
                     or e.name == 'StagehandEntity'
                     or e.name == 'ItemDropEntity'):

@@ -199,6 +199,17 @@ class Matmod(object):
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
         painter.drawRect(0, 0, 16, 16)
 
+class Plant(object):
+    """
+    Class to hold plant info.  This is more basic than all our other
+    objects because map plant entities seem to only ever reference the
+    PNG directly.
+    """
+
+    def __init__(self, pathname, pakdata):
+        self.image = QtGui.QPixmap()
+        self.image.loadFromData(pakdata.get(pathname))
+
 class SBObjectOrientation(object):
     """
     Info about a specific orientation.  Note that we're ignoring
@@ -565,6 +576,18 @@ class StarboundData(object):
                 self.objects[obj_json['objectName']] = SBObject(obj_json, obj_name, obj_path, pakdata)
             end = time.time()
             print('Loaded objects in {:.1f} sec'.format(end-start))
+
+            # Load in plant data
+            # The Entities seem to actually only references these by PNG path, so
+            # I guess that's what we'll do too.
+            start = time.time()
+            self.plants = {}
+            img_list = paktree.get_all_recurs_matching_ext('/plants', '.png')
+            for (img_path, img_name) in img_list:
+                img_full_path = '{}/{}'.format(img_path, img_name)
+                self.plants[img_full_path] = Plant(img_full_path, pakdata)
+            end = time.time()
+            print('Loaded plants in {:.1f} sec'.format(end-start))
 
             #for idx, (weight, system_name) in enumerate(celestial_names['systemNames']):
             #    if system_name == 'Fribbilus Xax':

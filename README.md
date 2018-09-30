@@ -22,8 +22,6 @@ TODO
 ----
 
  - Choose maps (totally hardcoded to my own savegames at the moment)
- - Fix object placement
- - Add plants
  - Add NPCs/Enemies/Monsters?
    - (What's a StagehandEntity, I wonder?)
  - Highlight tiles for info
@@ -44,16 +42,22 @@ TODO
    - Manually choose install dir, regardless
  - Support for mods
  - Performance improvements
-   - Only load/render what's actually on the screen (and maybe a few
-     screenfuls in each direction, so that ideally there's not a lot
-     of pop-in while scrolling?)
-   - Load more of the map in the background, maybe, in addition to
-     the above?
-   - I feel like our graphics processing could be streamlined - we're
-     going to/from PNGs constantly, perhaps there's a more efficient
-     format to store in memory?
-   - Though really I should profile the thing to find out where it's
-     actually spending its time, rather than just guessing.
+   - Resource loading:
+     - This only takes about 5-6 sec on my machine, so it's not bad,
+       but I suspect I could get rid of some spurious PNG conversions
+   - Map loading/rendering (this is slooow):
+     - Only load/render what's actually on the screen (and maybe a few
+       screenfuls in each direction, so that ideally there's not a lot
+       of pop-in while scrolling?)
+     - Load more of the map in the background, maybe, in addition to
+       the above?
+   - Window defocus/refocus:
+     - This could just be a problem on X11 - presumably it's display-
+       dependant.  Anyway, losing focus and then regaining focus causes
+       a very noticeable pause while, presumably, the whole graphics
+       surface gets reloaded into an X11 buffer.  Maybe some of my
+       proposed fixes for the map render/load could help here?  Will
+       have to experiment.
  - Toggles for various element types?
  - Fancier rendering?  (base map materials have "edges" which we completely
    ignore at the moment.  I suspect I'll never actually implement this
@@ -68,7 +72,7 @@ TODO
  - How big do worlds get, anyway?  A 6000x3000 world that I loaded is
    a bit slow but not too bad (though this is before adding in being
    able to highlight/click on tiles)
- - Figure out the rest of our material rendering templates
+ - Parse render templates properly
 
 LICENSE
 -------
