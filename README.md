@@ -73,6 +73,10 @@ TODO
    a bit slow but not too bad (though this is before adding in being
    able to highlight/click on tiles)
  - Parse render templates properly
+ - "Attach" objects/plants to Tile objects so they can be reported in
+   the mouseover notifications
+ - Focus/raise/whatever the main window after the progress bar closes
+   - Seriously, why can't I get this to work?
 
 LICENSE
 -------

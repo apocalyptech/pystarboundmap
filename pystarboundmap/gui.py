@@ -40,9 +40,9 @@ from .data import StarboundData
 
 # Current game (Destructicus)
 playerfile = '1d6a362efdf17303b77e33c75f73114f.player'
-#world_name = 'Fribbilus Xax Swarm I'
+world_name = 'Fribbilus Xax Swarm I'
 #world_name = 'Fribbilus Xax Swarm II'
-world_name = 'Fribbilus Xax Swarm IV'
+#world_name = 'Fribbilus Xax Swarm IV'
 
 class Constants(object):
 
@@ -275,11 +275,15 @@ class MapScene(QtWidgets.QGraphicsScene):
         (start_x, start_y) = self.world.metadata['playerStart']
         self.parent.centerOn(start_x*8, (self.world.height*8)-(start_y*8))
 
-        # Focus the qgraphicsview
-        self.parent.setFocus()
-
         # Show the main qgraphicsview once we're done
         self.parent.show()
+
+        # Focus the qgraphicsview - none of these seem to bloody *work*
+        #self.mainwindow.setFocus()
+        #self.parent.setFocus()
+        #self.mainwindow.raise_()
+        #self.mainwindow.activateWindow()
+        #self.parent.activateWindow()
 
     def draw_region(self, rx, ry):
         """
