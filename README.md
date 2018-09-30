@@ -51,6 +51,10 @@ TODO
        of pop-in while scrolling?)
      - Load more of the map in the background, maybe, in addition to
        the above?
+     - Memory usage is also atrocious with everything loaded, as it
+       stands right now.  Even a tiny, barely-explored world will eat
+       up a good 2GB resident RAM.  Better-explored worlds can easily
+       run your system into swap.
    - Window defocus/refocus:
      - This could just be a problem on X11 - presumably it's display-
        dependant.  Anyway, losing focus and then regaining focus causes
