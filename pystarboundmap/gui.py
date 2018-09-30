@@ -168,6 +168,109 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         #self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
         #self.clearFocus()
 
+class GUIRegion(object):
+    """
+    Class to hold info about a single region
+    """
+
+    def __init__(self, scene, rx, ry, data, world):
+        self.scene = scene
+        self.rx = rx
+        self.ry = ry
+        self.data = data
+        self.world = world
+        self.children = []
+
+        # Some convenience vars
+        materials = self.data.materials
+        matmods = self.data.matmods
+        objects = self.data.objects
+        plants = self.data.plants
+        world = self.world
+
+        # Get tiles
+        try:
+            data_tiles = world.get_tiles(rx, ry)
+        except KeyError:
+            print('WARNING: Region ({}, {}) was not found in world'.format(rx, ry))
+            return
+
+        # "real" coordinates
+        base_x = rx*32
+        gui_x = base_x*8
+        base_y = ry*32
+        gui_y = (world.height*8)-(base_y*8)
+
+        # Background for our drawn area (black)
+        self.region_bak = self.scene.addRect(gui_x, gui_y-255, 255, 255,
+                QtGui.QPen(QtGui.QColor(0, 0, 0)),
+                QtGui.QBrush(QtGui.QColor(0, 0, 0)),
+                )
+        self.region_bak.setZValue(Constants.z_black)
+
+        # Tiles!
+        cur_row = 0
+        cur_col = 0
+        for data_tile in data_tiles:
+            self.children.append(GUITile(self.scene, data_tile,
+                base_x+cur_col, base_y+cur_row,
+                rx, ry,
+                gui_x+cur_col*8, gui_y-(cur_row+1)*8))
+            self.scene.addItem(self.children[-1])
+            cur_col += 1
+            if cur_col == 32:
+                cur_col = 0
+                cur_row += 1
+
+        # Entities!
+        entities = []
+        try:
+            entities = world.get_entities(rx, ry)
+        except KeyError:
+            pass
+
+        for e in entities:
+            if e.name == 'ObjectEntity':
+                # Woo
+                obj_name = e.data['name']
+                obj_orientation = e.data['orientationIndex']
+                (obj_x, obj_y) = tuple(e.data['tilePosition'])
+                if obj_name in objects:
+                    obj = objects[obj_name]
+                    (image, offset_x, offset_y) = obj.get_image(obj_orientation)
+                    qpmi = QtWidgets.QGraphicsPixmapItem(image)
+                    qpmi.setPos(
+                            (obj_x*8) + offset_x,
+                            (world.height*8)-(obj_y*8) - offset_y - image.height(),
+                            )
+                    qpmi.setZValue(Constants.z_objects)
+                    self.scene.addItem(qpmi)
+                    self.children.append(qpmi)
+            elif e.name == 'PlantEntity':
+                (obj_x, obj_y) = tuple(e.data['tilePosition'])
+                for piece in e.data['pieces']:
+                    piece_img = piece['image'].split('?')[0]
+                    if piece_img in plants:
+                        img = plants[piece_img].image
+                        qpmi = QtWidgets.QGraphicsPixmapItem(img)
+                        qpmi.setPos(
+                                (obj_x*8) + (piece['offset'][0]*8),
+                                (world.height*8)-(obj_y*8) - (piece['offset'][1]*8) - img.height(),
+                                )
+                        qpmi.setZValue(Constants.z_plants)
+                        self.scene.addItem(qpmi)
+                        self.children.append(qpmi)
+                    else:
+                        print('not found: {}'.format(piece_img))
+            elif (e.name == 'MonsterEntity'
+                    or e.name == 'NpcEntity'
+                    or e.name == 'StagehandEntity'
+                    or e.name == 'ItemDropEntity'):
+                # Ignoring for now
+                pass
+            else:
+                print('Unknown entity type: {}'.format(e.name))
+
 class MapScene(QtWidgets.QGraphicsScene):
     """
     Our main scene which renders the map.
@@ -227,6 +330,7 @@ class MapScene(QtWidgets.QGraphicsScene):
 
         # Store the world reference
         self.world = world
+        self.regions = {}
 
         # Get a list of all regions so we know the count and can draw a
         # QProgressDialog usefully
@@ -252,7 +356,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Draw the whole map.  Here we go!
         start = time.time()
         for idx, (rx, ry) in enumerate(regions):
-            self.draw_region(rx, ry)
+            self.regions[(rx, ry)] = GUIRegion(self, rx, ry, self.data, self.world)
             # mod value has been tweaked a bit to find something that doesn't
             # affect load performance much but still updates reasonably quickly.
             # Obviously that depends on box performance a bit; this value seems
@@ -289,92 +393,6 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         Draws the specified region (if we can)
         """
-        # Some convenience vars
-        materials = self.data.materials
-        matmods = self.data.matmods
-        objects = self.data.objects
-        plants = self.data.plants
-        world = self.world
-
-        # Get tiles
-        try:
-            tiles = world.get_tiles(rx, ry)
-        except KeyError:
-            print('WARNING: Region ({}, {}) was not found in world'.format(rx, ry))
-            return
-
-        # "real" coordinates
-        base_x = rx*32
-        gui_x = base_x*8
-        base_y = ry*32
-        gui_y = (world.height*8)-(base_y*8)
-
-        # Background for our drawn area (black)
-        region_bak = self.addRect(gui_x, gui_y-255, 255, 255,
-                QtGui.QPen(QtGui.QColor(0, 0, 0)),
-                QtGui.QBrush(QtGui.QColor(0, 0, 0)),
-                )
-        region_bak.setZValue(Constants.z_black)
-
-        # Tiles!
-        cur_row = 0
-        cur_col = 0
-        for tile in tiles:
-            self.addItem(GUITile(self, tile,
-                base_x+cur_col, base_y+cur_row,
-                rx, ry,
-                gui_x+cur_col*8, gui_y-(cur_row+1)*8))
-            cur_col += 1
-            if cur_col == 32:
-                cur_col = 0
-                cur_row += 1
-
-        # Entities!
-        entities = []
-        try:
-            entities = world.get_entities(rx, ry)
-        except KeyError:
-            pass
-
-        for e in entities:
-            if e.name == 'ObjectEntity':
-                # Woo
-                obj_name = e.data['name']
-                obj_orientation = e.data['orientationIndex']
-                (obj_x, obj_y) = tuple(e.data['tilePosition'])
-                if obj_name in objects:
-                    obj = objects[obj_name]
-                    (image, offset_x, offset_y) = obj.get_image(obj_orientation)
-                    qpmi = QtWidgets.QGraphicsPixmapItem(image)
-                    qpmi.setPos(
-                            (obj_x*8) + offset_x,
-                            (world.height*8)-(obj_y*8) - offset_y - image.height(),
-                            )
-                    qpmi.setZValue(Constants.z_objects)
-                    self.addItem(qpmi)
-            elif e.name == 'PlantEntity':
-                (obj_x, obj_y) = tuple(e.data['tilePosition'])
-                for piece in e.data['pieces']:
-                    piece_img = piece['image'].split('?')[0]
-                    if piece_img in plants:
-                        img = plants[piece_img].image
-                        qpmi = QtWidgets.QGraphicsPixmapItem(img)
-                        qpmi.setPos(
-                                (obj_x*8) + (piece['offset'][0]*8),
-                                (world.height*8)-(obj_y*8) - (piece['offset'][1]*8) - img.height(),
-                                )
-                        qpmi.setZValue(Constants.z_plants)
-                        self.addItem(qpmi)
-                    else:
-                        print('not found: {}'.format(piece_img))
-            elif (e.name == 'MonsterEntity'
-                    or e.name == 'NpcEntity'
-                    or e.name == 'StagehandEntity'
-                    or e.name == 'ItemDropEntity'):
-                # Ignoring for now
-                pass
-            else:
-                print('Unknown entity type: {}'.format(e.name))
 
 class MapArea(QtWidgets.QGraphicsView):
     """
