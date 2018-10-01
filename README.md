@@ -56,7 +56,9 @@ TODO
        happen more in the background, rather than freezing the GUI
        while it loads.  (Using the mouse scrollwheel especially is
        quite jerky because of this.)
-     - Need a progress bar for loading
+     - Keep a "history" of loaded Regions and only expire them after
+       they haven't been used in N redraws?  That way, scrolling back
+       to a previously-visited area would be less likely to have to re-load.
  - Toggles for various element types?
  - Fancier rendering?  (base map materials have "edges" which we completely
    ignore at the moment.  I suspect I'll never actually implement this

@@ -482,16 +482,28 @@ class MapScene(QtWidgets.QGraphicsScene):
         min_ry = game_min_y//32 - 1
         max_ry = game_max_y//32 + 1
 
-        # Now load some regions!
+        # First find out how many regions we're going to have to load (so that
+        # we can initialize a progressbar)
         valid_regions = set()
+        regions_to_load = []
         for rx in range(min_rx, max_rx+1):
             for ry in range(min_ry, max_ry+1):
                 region = (rx, ry)
                 valid_regions.add(region)
-                #print('Loading region {}'.format(region))
                 if region in self.regions:
-                    self.regions[region].load()
-                    self.loaded_regions.add(region)
+                    if not self.regions[region].loaded:
+                        regions_to_load.append(region)
+
+        # Initialize progressbar
+        region_loading = self.mainwindow.region_loading
+        region_loading.start(len(regions_to_load))
+
+        # Now actually do the loading
+        for idx, region in enumerate(regions_to_load):
+            #print('Loading region {}'.format(region))
+            self.regions[region].load()
+            self.loaded_regions.add(region)
+            region_loading.update(idx)
 
         # Unload regions which are too far out
         for region in list(self.loaded_regions):
@@ -499,6 +511,9 @@ class MapScene(QtWidgets.QGraphicsScene):
                 #print('Unloading region {}'.format(region))
                 self.regions[region].unload()
                 self.loaded_regions.remove(region)
+
+        # Finish our progress bar
+        region_loading.finish()
 
 class MapArea(QtWidgets.QGraphicsView):
     """
@@ -582,6 +597,59 @@ class DataTable(QtWidgets.QWidget):
     def set_back_matmod(self, mod):
         self.back_matmod_label.setText(mod)
 
+class RegionLoadingNotifier(QtWidgets.QWidget):
+    """
+    Widgets to show a progress bar (and some text) while loading regions
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.layout = QtWidgets.QGridLayout()
+        self.setLayout(self.layout)
+
+        self.text_label = QtWidgets.QLabel('', self)
+        self.layout.addWidget(self.text_label, 0, 0)
+        self.text_label.hide()
+
+        self.bar = QtWidgets.QProgressBar(self)
+        self.bar.setRange(0, 1)
+        self.bar.setValue(0)
+        self.layout.addWidget(self.bar, 1, 0)
+        self.num_regions = 1
+        self.bar.hide()
+
+    def start(self, num_regions):
+        """
+        Starts us off
+        """
+
+        self.num_regions = num_regions
+        if num_regions > 0:
+            self.bar.setRange(0, num_regions)
+            self.bar.setValue(0)
+            self.text_label.setText('Loading Regions: 0/{}'.format(num_regions))
+            self.text_label.show()
+            self.bar.show()
+
+    def update(self, value):
+        """
+        Updates with a new value
+        """
+        self.bar.setValue(value)
+        self.text_label.setText('Loading Regions: {}/{}'.format(value, self.num_regions))
+
+    def finish(self):
+        """
+        Finish!
+        """
+        self.bar.setRange(0, 1)
+        self.bar.setValue(1)
+        self.text_label.setText('')
+        self.num_regions = 1
+        self.text_label.hide()
+        self.bar.hide()
+
 class GUI(QtWidgets.QMainWindow):
     """
     Main application window
@@ -618,9 +686,23 @@ class GUI(QtWidgets.QMainWindow):
         hbox = QtWidgets.QHBoxLayout()
         w.setLayout(hbox)
 
+        # Lefthand side vbox
+        lh = QtWidgets.QWidget()
+        vbox = QtWidgets.QVBoxLayout()
+        lh.setLayout(vbox)
+        hbox.addWidget(lh, 0, QtCore.Qt.AlignLeft)
+
         # table to store data display
         self.data_table = DataTable(self)
-        hbox.addWidget(self.data_table, 0, QtCore.Qt.AlignLeft)
+        vbox.addWidget(self.data_table, 0, QtCore.Qt.AlignLeft)
+
+        # Spacer on the lefthand panel
+        spacer = QtWidgets.QWidget()
+        vbox.addWidget(spacer, 1)
+
+        # Region-loading display
+        self.region_loading = RegionLoadingNotifier(self)
+        vbox.addWidget(self.region_loading, 0)
 
         # Main Widget
         self.maparea = MapArea(self, self.data)
