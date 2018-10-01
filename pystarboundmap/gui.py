@@ -172,20 +172,15 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             else:
                 data_table.set_back_matmod('')
 
-        # TODO: Changing brush/pen to get visual highlighting makes the
-        # hover events slooooow.  The highlighting lags *significantly*
-        # behind the mouse.  Perhaps swapping graphics on our child
-        # tiles would work instead?  (pre-brightened, like we do for
-        # the background images currently, perhaps?)  Anyway, for now
-        # I'm just coping without visual notification.
-        #self.setBrush(QtGui.QBrush(QtGui.QColor(255, 128, 128, 128)))
-        #self.setPen(QtGui.QPen(QtGui.QColor(255, 128, 128, 128)))
+        # TODO: Might want to pre-brighten our images and swap 'em out.  Or
+        # at least do so for objects, so we could highlight the whole thing.
+        self.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255, 128)))
+        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
         #self.setFocus()
 
     def hoverLeaveEvent(self, event=None):
-        pass
-        #self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
-        #self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
+        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
         #self.clearFocus()
 
 class GUIRegion(object):
