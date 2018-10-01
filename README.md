@@ -1,22 +1,32 @@
 Python Starbound Mapper
 -----------------------
 
-Yet another Starbound mapper!  This is in very early stages, and
-apologies if it never gets much beyond this point but it pops up
-in your Google results anyway.
+Yet another Starbound mapper!  This is in pretty early stages, but is at
+least pretty functional as a bare-bones map viewer.
 
 Uses:
  - Python 3
  - python-pillow
  - PyQt5
- - py-starbound (by blixt)
+ - [py-starbound](https://github.com/blixt/py-starbound) (by blixt)
 
-**Extremely** rough at the moment, and not suitable for public use
-yet.  Will update this with usage info and the like if it ever gets to a nicer
-stage.  Uses blixt's lovely
-[py-starbound](https://github.com/blixt/py-starbound) to get at the data
-(currently it requires some functions which are not yet actually committed to
-that project though).
+**NOTE:** This still a hardcoded path at the top of `data.py` which defines
+where to find the Starbound install dir, so be sure to change it yourself:
+
+```py
+# Hardcoded stuff for now
+base_game = '/usr/local/games/Steam/SteamApps/common/Starbound'
+```
+
+Screenshot
+----------
+
+This is pretty much it, at the moment.  You can open new maps by filename,
+or by choosing a character's name followed by a planet name (note that that
+one doesn't yet let you open moons, space stations, etc).  Click-and-drag
+will move the map around, in addition to your usual scrolling methods.
+
+[![pystarboundmap screenshot](screenshot.png)](screenshot.png)
 
 TODO
 ----
