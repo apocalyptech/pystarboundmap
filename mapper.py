@@ -30,5 +30,14 @@ import sys
 import argparse
 from pystarboundmap.gui import Application
 
-gui = Application()
+# Arguments
+parser = argparse.ArgumentParser(description='Python Starbound Mapper')
+parser.add_argument('filename',
+        type=str,
+        nargs='?',
+        metavar='filename',
+        help='Filename to load')
+args = parser.parse_args()
+
+gui = Application(args.filename)
 sys.exit(gui.exec_())

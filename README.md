@@ -24,6 +24,7 @@ TODO
  - Choose maps (totally hardcoded to my own savegames at the moment)
  - Add NPCs/Enemies/Monsters?
    - (What's a StagehandEntity, I wonder?)
+ - Add liquids
  - Highlight tiles for info
    - Click for full info
  - Go to spawn points, flags
@@ -33,6 +34,7 @@ TODO
  - Open file menu
  - Progress bar while loading resources
  - Search for item types (ores, quest-related things?)
+ - Platforms seem to draw a black area underneath 'em
  - Visualization of explored areas (as defined by light sources)
  - Remember window geometry between runs
  - Autodetect game location

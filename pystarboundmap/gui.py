@@ -30,19 +30,7 @@ import os
 import sys
 import time
 from PyQt5 import QtWidgets, QtGui, QtCore
-from .data import StarboundData
-
-# Hardcoded, for now:
-
-# Original game (cheat, abandoned)
-#playerfile = '509185ee4570a66b2d514e2e4740199c.player'
-#world_name = 'Kuma Expanse IV'
-
-# Current game (Destructicus)
-playerfile = '1d6a362efdf17303b77e33c75f73114f.player'
-world_name = 'Fribbilus Xax Swarm I'
-#world_name = 'Fribbilus Xax Swarm II'
-#world_name = 'Fribbilus Xax Swarm IV'
+from .data import StarboundData, base_universe
 
 class Constants(object):
 
@@ -261,7 +249,6 @@ class GUIRegion(object):
 
         for e in entities:
             if e.name == 'ObjectEntity':
-                # Woo
                 obj_name = e.data['name']
                 obj_orientation = e.data['orientationIndex']
                 (obj_x, obj_y) = tuple(e.data['tilePosition'])
@@ -295,8 +282,10 @@ class GUIRegion(object):
             elif (e.name == 'MonsterEntity'
                     or e.name == 'NpcEntity'
                     or e.name == 'StagehandEntity'
-                    or e.name == 'ItemDropEntity'):
-                # Ignoring for now
+                    or e.name == 'ItemDropEntity'
+                    or e.name == 'VehicleEntity'
+                    ):
+                # TODO: Ignoring for now
                 pass
             else:
                 print('Unknown entity type: {}'.format(e.name))
@@ -510,6 +499,16 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Finish our progress bar
         region_loading.finish()
 
+    def clear(self):
+        """
+        Clears out our scene
+        """
+        super().clear()
+        self.world = None
+        self.regions = {}
+        self.loaded_regions = set()
+        self.given_center = False
+
 class MapArea(QtWidgets.QGraphicsView):
     """
     Main area rendering the map
@@ -645,12 +644,21 @@ class RegionLoadingNotifier(QtWidgets.QWidget):
         self.text_label.hide()
         self.bar.hide()
 
+class OpenByName(QtWidgets.QDialog):
+    """
+    Dialog to open a world by player/planet name, rather than by filename
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.chosen_filename = None
+
 class GUI(QtWidgets.QMainWindow):
     """
     Main application window
     """
 
-    def __init__(self, app):
+    def __init__(self, app, filename):
         super().__init__()
 
         self.app = app
@@ -661,19 +669,27 @@ class GUI(QtWidgets.QMainWindow):
 
         # Initialization stuff
         self.world = None
+        self.worlddf = None
         self.initUI()
 
         # Show ourselves
         self.show()
 
-        # For now, hardcoded loading of a specific map
-        self.load_map()
+        # If we've been passed a filename, load it.  Otherwise, open the
+        # loading dialog
+        if filename:
+            self.load_map(filename)
+        else:
+            self.action_open_file()
 
     def initUI(self):
 
         # File Menu
         menubar = self.menuBar()
         filemenu = menubar.addMenu('&File')
+        filemenu.addAction('&Open File', self.action_open_file, 'Ctrl+O')
+        filemenu.addAction('Open by &Name', self.action_open_name, 'Ctrl+N')
+        filemenu.addSeparator()
         filemenu.addAction('&Quit', self.action_quit, 'Ctrl+Q')
 
         # HBox to store our main widgets
@@ -718,27 +734,62 @@ class GUI(QtWidgets.QMainWindow):
         """
         self.close()
 
-    def load_map(self):
+    def action_open_file(self):
+        """
+        Opens by filename
+        """
+
+        # TODO: handle errors, etc.
+
+        (filename, filefilter) = QtWidgets.QFileDialog.getOpenFileName(self,
+                'Open Starbound World...',
+                base_universe,
+                'World Files (*.world);;All Files (*.*)')
+
+        if filename and filename != '':
+            self.load_map(filename)
+
+        # Re-focus the main window
+        self.activateWindow()
+
+    def action_open_name(self):
+        """
+        Opens by character/system name
+        """
+
+    def load_map(self, filename):
         """
         Hardcoded for now
         """
 
-        player = self.data.get_player(playerfile)
-        if player:
-            self.world = player.get_worlds(world_name)
+        # Close out any old map we have
+        if self.world:
+            self.world = None
+            self.scene.clear()
+        if self.worlddf:
+            self.worlddf.close()
+            self.worlddf = None
+
+        # Now load the new one
+        # TODO: check for exceptions, etc.
+        (self.world, self.worlddf) = StarboundData.open_world(filename)
 
         if self.world:
             self.scene.load_map(self.world)
         else:
-            # TODO: Once we have interactive stuff, handle this better.
+            # TODO: Handle this better, too.
             raise Exception('World not found')
+
+        #player = self.data.get_player(playerfile)
+        #if player:
+        #    self.world = player.get_worlds(world_name)
 
 class Application(QtWidgets.QApplication):
     """
     Main application
     """
 
-    def __init__(self):
+    def __init__(self, filename=None):
         super().__init__([])
-        self.app = GUI(self)
+        self.app = GUI(self, filename)
 

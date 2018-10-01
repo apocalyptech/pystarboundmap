@@ -416,17 +416,14 @@ class Player(object):
             systemlist = v['systems']
             return systemlist
 
-    def get_worlds(self, world_name=None):
+    def get_worlds(self):
         """
-        If `world_name` is `None`, return a list of all planets known
-        to the user, as a list of tuples of the form:
+        Returns a list of all planets known to the user, as a list of
+        tuples of the form:
             (world_name, filename)
-
-        If a `name` is specified, return just that
-        planet, or `None`.
         
-        Note that both modes will have to actually load in world files
-        to get the names.
+        Note that this has to actually load in world files to get the
+        names.
         """
 
         planets = []
@@ -449,52 +446,34 @@ class Player(object):
                 world_filename = os.path.join(
                         base_universe,
                         '{}_{}.world'.format(base_system_name, planet['planet']))
-                #print('Opening {}'.format(world_filename))
-                with open(world_filename, 'rb') as worlddf:
-                    worldmm = mmap.mmap(worlddf.fileno(), 0, access=mmap.ACCESS_READ)
-                    world = starbound.World(worldmm)
-                    world.read_metadata()
+                (world, worlddf) = StarboundData.open_world(world_filename)
+                # Keys in world.metadata:
+                #   centralStructure
+                #   spawningEnabled
+                #   adjustPlayerStart
+                #   protectedDungeonIds
+                #   playerStart
+                #   dungeonIdBreathable
+                #   respawnInWorld
+                #   worldTemplate
+                #   worldProperties
+                #   dungeonIdGravity
+                #print(world.metadata)
+                cp = world.metadata['worldTemplate']['celestialParameters']
+                name = strip_colors(cp['name'])
+                #print('Found world {}, type {}, size {}x{} - Subtypes:'.format(
+                #    world_name,
+                #    cp['parameters']['worldType'],
+                #    world.width,
+                #    world.height,
+                #    ))
+                #for subtype in cp['parameters']['terrestrialType']:
+                #    print(' * {}'.format(subtype))
+                planets.append((name, world_filename))
+                worlddf.close()
 
-                    # Keys in world.metadata:
-                    #   centralStructure
-                    #   spawningEnabled
-                    #   adjustPlayerStart
-                    #   protectedDungeonIds
-                    #   playerStart
-                    #   dungeonIdBreathable
-                    #   respawnInWorld
-                    #   worldTemplate
-                    #   worldProperties
-                    #   dungeonIdGravity
-                    #print(world.metadata)
-                    cp = world.metadata['worldTemplate']['celestialParameters']
-                    name = strip_colors(cp['name'])
-                    #print('Loaded world: {}'.format(name))
-                    if world_name:
-                        if name.lower() == world_name.lower():
-                            #print('Found world {}, type {}, size {}x{} - Subtypes:'.format(
-                            #    world_name,
-                            #    cp['parameters']['worldType'],
-                            #    world.width,
-                            #    world.height,
-                            #    ))
-                            #for subtype in cp['parameters']['terrestrialType']:
-                            #    print(' * {}'.format(subtype))
-                            return world
-                    else:
-                        planets.append((name, world_filename))
-
-                    # TODO: I'm using mmap here without *really* having investigated
-                    # how to manage them properly.  Once the UI can load planets
-                    # interactively, will have to make sure that these get closed
-                    # out properly so that world data doesn't stay resident in RAM.
-                    worldmm.close()
-
-        # Return, depending on mode
-        if world_name:
-            return None
-        else:
-            return planets
+        # Return our list
+        return planets
 
 class StarboundData(object):
     """
@@ -608,3 +587,18 @@ class StarboundData(object):
         with open(os.path.join(base_player, player_file), 'rb') as playerdf:
             player = Player(starbound.read_sbvj01(playerdf))
         return player
+
+    @staticmethod
+    def open_world(filename):
+        """
+        Given a `filename`, returns a tuple where the first element is
+        a World object, and the second is a filehandle which should be
+        closed once the app is through with it (this will actually be
+        an mmap object).
+        """
+
+        with open(filename, 'rb') as worlddf:
+            worldmm = mmap.mmap(worlddf.fileno(), 0, access=mmap.ACCESS_READ)
+            world = starbound.World(worldmm)
+            world.read_metadata()
+            return (world, worldmm)
