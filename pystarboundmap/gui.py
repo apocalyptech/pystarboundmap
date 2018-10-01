@@ -61,14 +61,13 @@ class GUITile(QtWidgets.QGraphicsRectItem):
     Hoverable area which the user can click on for info, etc.
     """
 
-    def __init__(self, parent, tile, x, y, rx, ry, gui_x, gui_y):
+    def __init__(self, parent, tile, x, y, region, gui_x, gui_y):
         super().__init__()
         self.parent = parent
         self.tile = tile
         self.x = x
         self.y = y
-        self.rx = rx
-        self.ry = ry
+        self.region = region
         self.gui_x = gui_x
         self.gui_y = gui_y
         self.setAcceptHoverEvents(True)
@@ -117,7 +116,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         materials = self.parent.data.materials
         matmods = self.parent.data.matmods
 
-        data_table.set_region(self.rx, self.ry)
+        data_table.set_region(self.region.rx, self.region.ry)
         data_table.set_tile(self.x, self.y)
 
         if self.tile.foreground_material in materials:
@@ -181,6 +180,11 @@ class GUIRegion(object):
         self.world = world
         self.children = []
 
+    def load(self):
+        """
+        Loads ourself into memory
+        """
+
         # Some convenience vars
         materials = self.data.materials
         matmods = self.data.matmods
@@ -190,23 +194,24 @@ class GUIRegion(object):
 
         # Get tiles
         try:
-            data_tiles = world.get_tiles(rx, ry)
+            data_tiles = world.get_tiles(self.rx, self.ry)
         except KeyError:
-            print('WARNING: Region ({}, {}) was not found in world'.format(rx, ry))
+            print('WARNING: Region ({}, {}) was not found in world'.format(self.rx, self.ry))
             return
 
         # "real" coordinates
-        base_x = rx*32
+        base_x = self.rx*32
         gui_x = base_x*8
-        base_y = ry*32
+        base_y = self.ry*32
         gui_y = (world.height*8)-(base_y*8)
 
         # Background for our drawn area (black)
-        self.region_bak = self.scene.addRect(gui_x, gui_y-255, 255, 255,
+        region_bak = self.scene.addRect(gui_x, gui_y-255, 255, 255,
                 QtGui.QPen(QtGui.QColor(0, 0, 0)),
                 QtGui.QBrush(QtGui.QColor(0, 0, 0)),
                 )
-        self.region_bak.setZValue(Constants.z_black)
+        region_bak.setZValue(Constants.z_black)
+        self.children.append(region_bak)
 
         # Tiles!
         cur_row = 0
@@ -214,7 +219,7 @@ class GUIRegion(object):
         for data_tile in data_tiles:
             self.children.append(GUITile(self.scene, data_tile,
                 base_x+cur_col, base_y+cur_row,
-                rx, ry,
+                self,
                 gui_x+cur_col*8, gui_y-(cur_row+1)*8))
             self.scene.addItem(self.children[-1])
             cur_col += 1
@@ -225,7 +230,7 @@ class GUIRegion(object):
         # Entities!
         entities = []
         try:
-            entities = world.get_entities(rx, ry)
+            entities = world.get_entities(self.rx, self.ry)
         except KeyError:
             pass
 
@@ -270,6 +275,14 @@ class GUIRegion(object):
                 pass
             else:
                 print('Unknown entity type: {}'.format(e.name))
+
+    def unload(self):
+        """
+        Unload from the graphics scene
+        """
+        for child in self.children:
+            self.scene.removeItem(child)
+        self.children = []
 
 class MapScene(QtWidgets.QGraphicsScene):
     """
@@ -356,7 +369,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Draw the whole map.  Here we go!
         start = time.time()
         for idx, (rx, ry) in enumerate(regions):
-            self.regions[(rx, ry)] = GUIRegion(self, rx, ry, self.data, self.world)
+            region = GUIRegion(self, rx, ry, self.data, self.world)
+            region.load()
+            self.regions[(rx, ry)] = region
             # mod value has been tweaked a bit to find something that doesn't
             # affect load performance much but still updates reasonably quickly.
             # Obviously that depends on box performance a bit; this value seems
