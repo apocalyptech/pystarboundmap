@@ -10,7 +10,7 @@ Uses:
  - PyQt5
  - [py-starbound](https://github.com/blixt/py-starbound) (by blixt)
 
-**NOTE:** This still a hardcoded path at the top of `data.py` which defines
+**NOTE:** There is still a hardcoded path at the top of `data.py` which defines
 where to find the Starbound install dir, so be sure to change it yourself:
 
 ```py
