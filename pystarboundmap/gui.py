@@ -84,6 +84,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         world = self.parent.world
 
         # Materials (background)
+        self.material_background = None
         if tile.background_material in materials and tile.foreground_material not in materials:
             self.material_background = QtWidgets.QGraphicsPixmapItem(materials[tile.background_material].bgimage)
             self.material_background.setPos(gui_x, gui_y)
@@ -91,6 +92,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             self.parent.addItem(self.material_background)
 
         # Matmods (background)
+        self.mod_background = None
         if tile.background_mod in matmods and tile.foreground_material not in materials:
             self.mod_background = QtWidgets.QGraphicsPixmapItem(matmods[tile.background_mod].bgimage)
             self.mod_background.setPos(gui_x-4, gui_y-4)
@@ -98,6 +100,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             self.parent.addItem(self.mod_background)
 
         # Materials (foreground)
+        self.material_foreground = None
         if tile.foreground_material in materials:
             self.material_foreground = QtWidgets.QGraphicsPixmapItem(materials[tile.foreground_material].image)
             self.material_foreground.setPos(gui_x, gui_y)
@@ -105,11 +108,29 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             self.parent.addItem(self.material_foreground)
 
         # Matmods (foreground)
+        self.mod_foreground = None
         if tile.foreground_mod in matmods:
             self.mod_foreground = QtWidgets.QGraphicsPixmapItem(matmods[tile.foreground_mod].image)
             self.mod_foreground.setPos(gui_x-4, gui_y-4)
             self.mod_foreground.setZValue(Constants.z_foreground_mod)
             self.parent.addItem(self.mod_foreground)
+
+    def unload(self):
+        """
+        Unloads ourself from the scene
+        """
+        if self.material_background:
+            self.parent.removeItem(self.material_background)
+            self.material_background = None
+        if self.mod_background:
+            self.parent.removeItem(self.mod_background)
+            self.mod_background = None
+        if self.material_foreground:
+            self.parent.removeItem(self.material_foreground)
+            self.material_foreground = None
+        if self.mod_foreground:
+            self.parent.removeItem(self.mod_foreground)
+            self.mod_foreground = None
 
     def hoverEnterEvent(self, event=None):
         data_table = self.parent.mainwindow.data_table
@@ -179,11 +200,19 @@ class GUIRegion(object):
         self.data = data
         self.world = world
         self.children = []
+        self.tiles = []
+        self.loaded = False
 
     def load(self):
         """
         Loads ourself into memory
         """
+
+        if self.loaded:
+            return
+
+        self.children = []
+        self.tiles = []
 
         # Some convenience vars
         materials = self.data.materials
@@ -191,6 +220,7 @@ class GUIRegion(object):
         objects = self.data.objects
         plants = self.data.plants
         world = self.world
+        self.loaded = True
 
         # Get tiles
         try:
@@ -217,11 +247,11 @@ class GUIRegion(object):
         cur_row = 0
         cur_col = 0
         for data_tile in data_tiles:
-            self.children.append(GUITile(self.scene, data_tile,
+            self.tiles.append(GUITile(self.scene, data_tile,
                 base_x+cur_col, base_y+cur_row,
                 self,
                 gui_x+cur_col*8, gui_y-(cur_row+1)*8))
-            self.scene.addItem(self.children[-1])
+            self.scene.addItem(self.tiles[-1])
             cur_col += 1
             if cur_col == 32:
                 cur_col = 0
@@ -282,7 +312,12 @@ class GUIRegion(object):
         """
         for child in self.children:
             self.scene.removeItem(child)
+        for tile in self.tiles:
+            tile.unload()
+            self.scene.removeItem(tile)
+        self.tiles = []
         self.children = []
+        self.loaded = False
 
 class MapScene(QtWidgets.QGraphicsScene):
     """
@@ -296,8 +331,19 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.mainwindow = mainwindow
         self.data = data
         self.world = None
+        self.regions = {}
+        self.loaded_regions = set()
+        self.hbar = self.parent.horizontalScrollBar()
+        self.hbar.sliderReleased.connect(self.draw_visible_area)
+        self.vbar = self.parent.verticalScrollBar()
+        self.vbar.sliderReleased.connect(self.draw_visible_area)
 
         self.dragging = False
+        self.moved = False
+
+        # This is used so that our first couple of GUI-setup steps doesn't
+        # trigger a map-loading event (until we're actually ready for it)
+        self.given_center = False
 
     def mousePressEvent(self, event):
         """
@@ -306,6 +352,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         # TODO: I'll probably want to be able to click on a tile to get more
         # info, etc, so this'll have to be smarter
         self.dragging = True
+        self.moved = False
         self.parent.setCursor(QtCore.Qt.ClosedHandCursor)
 
     def mouseReleaseEvent(self, event):
@@ -314,6 +361,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         self.dragging = False
         self.parent.unsetCursor()
+        if self.moved:
+            self.draw_visible_area()
+            self.moved = False
 
     def mouseMoveEvent(self, event):
         """
@@ -330,12 +380,14 @@ class MapScene(QtWidgets.QGraphicsScene):
                 new_x = sb.value() + delta_x
                 if new_x >= sb.minimum() and new_x <= sb.maximum():
                     sb.setValue(new_x)
+                self.moved = True
             if delta_y != 0:
                 self.dragged = True
                 sb = self.parent.verticalScrollBar()
                 new_y = sb.value() + delta_y
                 if new_y >= sb.minimum() and new_y <= sb.maximum():
                     sb.setValue(new_y)
+                self.moved = True
         else:
             super().mouseMoveEvent(event)
 
@@ -347,67 +399,106 @@ class MapScene(QtWidgets.QGraphicsScene):
 
         # Get a list of all regions so we know the count and can draw a
         # QProgressDialog usefully
-        regions = world.get_all_regions_with_tiles()
-        print('{} regions to load'.format(len(regions)))
+        min_region_x = 99999999
+        min_region_y = 99999999
+        max_region_x = 0
+        max_region_y = 0
+        for region in world.get_all_regions_with_tiles():
+            self.regions[region] = GUIRegion(self, region[0], region[1], self.data, self.world)
+            min_region_x = min(region[0], min_region_x)
+            min_region_y = min(region[1], min_region_y)
+            max_region_x = max(region[0], max_region_x)
+            max_region_y = max(region[1], max_region_y)
+
+        # Figure out our bounding areas
+        start_x = min_region_x*256
+        start_y = (world.height*8) - ((max_region_y+1)*256)
+        end_x = (max_region_x+1)*256
+        end_y = (world.height*8) - (min_region_y*256)
+        self.setSceneRect(start_x, start_y, end_x - start_x, end_y - start_y)
 
         # Get all pending app events out of the way
         self.mainwindow.app.processEvents()
 
-        # Hide the main qgraphicsview while we're loading
-        self.parent.hide()
-
-        # Set up the QProgressDialog
-        qpg = QtWidgets.QProgressDialog(self.mainwindow)
-        qpg.setWindowTitle('Loading World')
-        qpg.setLabelText('Loading World')
-        qpg.setRange(0, len(regions))
-        qpg.setValue(0)
-        qpg.setWindowModality(QtCore.Qt.WindowModal)
-        qpg.setMinimumSize(300, 100)
-        qpg.show()
-
-        # Draw the whole map.  Here we go!
-        start = time.time()
-        for idx, (rx, ry) in enumerate(regions):
-            region = GUIRegion(self, rx, ry, self.data, self.world)
-            region.load()
-            self.regions[(rx, ry)] = region
-            # mod value has been tweaked a bit to find something that doesn't
-            # affect load performance much but still updates reasonably quickly.
-            # Obviously that depends on box performance a bit; this value seems
-            # all right on my CPU, at least.
-            if (idx % 50) == 0:
-                qpg.setValue(idx)
-                self.mainwindow.app.processEvents()
-                if qpg.wasCanceled():
-                    # TODO: handle this better
-                    sys.exit(1)
-        end = time.time()
-        print('Loaded map in {:.1f} secs'.format(end-start))
-
-        # Close the progress dialog
-        qpg.close()
-
         # For now, center on the starting region
-        # (this doesn't seem *totally* right, though perhaps the player
-        # technically starts in the air a bit?)
-        (start_x, start_y) = self.world.metadata['playerStart']
-        self.parent.centerOn(start_x*8, (self.world.height*8)-(start_y*8))
+        self.center_on(*self.world.metadata['playerStart'])
 
-        # Show the main qgraphicsview once we're done
-        self.parent.show()
-
-        # Focus the qgraphicsview - none of these seem to bloody *work*
-        #self.mainwindow.setFocus()
-        #self.parent.setFocus()
-        #self.mainwindow.raise_()
-        #self.mainwindow.activateWindow()
-        #self.parent.activateWindow()
-
-    def draw_region(self, rx, ry):
+    def ingame_to_scene(self, x, y):
         """
-        Draws the specified region (if we can)
+        Converts the in-game coordinates (x, y) to scene coordinates,
+        centered on the middle of the tile
         """
+        new_x = (x*8)+4
+        # TODO: this y coord may be slightly off
+        new_y = (self.world.height*8) - (y*8) - 4
+        return (new_x, new_y)
+
+    def scene_to_ingame(self, x, y):
+        """
+        Converts scene coordinates (x, y) to in-game coordinates.
+        """
+        new_x = x//8
+        # TODO: this y coord may be slightly off
+        new_y = ((self.world.height*8) - y)//8
+        return (new_x, new_y)
+
+    def center_on(self, x, y):
+        """
+        Centers ourself around the in-game coordinates (x, y)
+        """
+
+        # Mark that we can start actually drawing now
+        self.given_center = True
+
+        # Center the view
+        (ctr_x, ctr_y) = self.ingame_to_scene(x, y)
+        self.parent.centerOn(ctr_x, ctr_y)
+
+        # Draw what needs drawing
+        self.draw_visible_area()
+
+    def draw_visible_area(self):
+        """
+        Draws the visible area of the scrollbar, and a bit of padding to
+        help scrolling hopefully keep up a bit.  Will also purge regions
+        which are sufficiently out-of-view.
+        """
+
+        if not self.given_center:
+            return
+
+        # Figure out what regions we should be showing
+        horiz_width = self.hbar.pageStep()
+        gui_start_x = self.hbar.value()
+        vert_width = self.vbar.pageStep()
+        gui_start_y = self.vbar.value()
+        (game_min_x, game_max_y) = self.scene_to_ingame(gui_start_x, gui_start_y)
+        (game_max_x, game_min_y) = self.scene_to_ingame(
+                gui_start_x + horiz_width,
+                gui_start_y + vert_width,
+                )
+        min_rx = game_min_x//32 - 1
+        max_rx = game_max_x//32 + 1
+        min_ry = game_min_y//32 - 1
+        max_ry = game_max_y//32 + 1
+
+        # Now load some regions!
+        valid_regions = set()
+        for rx in range(min_rx, max_rx+1):
+            for ry in range(min_ry, max_ry+1):
+                region = (rx, ry)
+                valid_regions.add(region)
+                #print('Loading region {}'.format(region))
+                if region in self.regions:
+                    self.regions[region].load()
+                    self.loaded_regions.add(region)
+
+        # Unload regions which are too far out
+        for region in list(self.loaded_regions):
+            if region not in valid_regions:
+                #print('Unloading region {}'.format(region))
+                self.regions[region].unload()
+                self.loaded_regions.remove(region)
 
 class MapArea(QtWidgets.QGraphicsView):
     """
@@ -422,6 +513,14 @@ class MapArea(QtWidgets.QGraphicsView):
         self.setScene(self.scene)
         self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(200, 200, 200)))
         self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.scene.draw_visible_area()
+
+    def wheelEvent(self, event):
+        super().wheelEvent(event)
+        self.scene.draw_visible_area()
 
 class DataTable(QtWidgets.QWidget):
     """

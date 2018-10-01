@@ -45,23 +45,18 @@ TODO
    - Resource loading:
      - This only takes about 5-6 sec on my machine, so it's not bad,
        but I suspect I could get rid of some spurious PNG conversions
-   - Map loading/rendering (this is slooow):
-     - Only load/render what's actually on the screen (and maybe a few
-       screenfuls in each direction, so that ideally there's not a lot
-       of pop-in while scrolling?)
-     - Load more of the map in the background, maybe, in addition to
-       the above?
-     - Memory usage is also atrocious with everything loaded, as it
-       stands right now.  Even a tiny, barely-explored world will eat
-       up a good 2GB resident RAM.  Better-explored worlds can easily
-       run your system into swap.
-   - Window defocus/refocus:
-     - This could just be a problem on X11 - presumably it's display-
-       dependant.  Anyway, losing focus and then regaining focus causes
-       a very noticeable pause while, presumably, the whole graphics
-       surface gets reloaded into an X11 buffer.  Maybe some of my
-       proposed fixes for the map render/load could help here?  Will
-       have to experiment.
+   - Map loading/rendering:
+     - This is pretty slow, and I'll have to profile it to figure out
+       where the slowness actually is.  It's more of an annoyance at
+       the moment, though, since we're now only rendering the visible
+       areas of the map, rather than loading the entire thing at the
+       app startup
+     - Render more than just a single extra region on each side?
+     - Would like to move map loading into a separate thread so it can
+       happen more in the background, rather than freezing the GUI
+       while it loads.  (Using the mouse scrollwheel especially is
+       quite jerky because of this.)
+     - Need a progress bar for loading
  - Toggles for various element types?
  - Fancier rendering?  (base map materials have "edges" which we completely
    ignore at the moment.  I suspect I'll never actually implement this
@@ -73,14 +68,9 @@ TODO
    assigned from four or five options.  The randomization is fixed-seed
    inside Starbound itself, and I highly doubt I'd be able to get it the
    same, but maps would probably still look nicer with them randomized)
- - How big do worlds get, anyway?  A 6000x3000 world that I loaded is
-   a bit slow but not too bad (though this is before adding in being
-   able to highlight/click on tiles)
  - Parse render templates properly
  - "Attach" objects/plants to Tile objects so they can be reported in
    the mouseover notifications
- - Focus/raise/whatever the main window after the progress bar closes
-   - Seriously, why can't I get this to work?
 
 LICENSE
 -------
