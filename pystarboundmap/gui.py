@@ -29,6 +29,7 @@
 import os
 import sys
 import time
+import datetime
 from PyQt5 import QtWidgets, QtGui, QtCore
 from .data import StarboundData, base_universe
 
@@ -644,14 +645,168 @@ class RegionLoadingNotifier(QtWidgets.QWidget):
         self.text_label.hide()
         self.bar.hide()
 
-class OpenByName(QtWidgets.QDialog):
+class PlanetNameButton(QtWidgets.QPushButton):
     """
-    Dialog to open a world by player/planet name, rather than by filename
+    Ridiculous little class, but it lets us know which button was clicked, easily.
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent, world_name, filename):
         super().__init__(parent)
+        self.parent = parent
+        self.world_name = world_name
+        self.filename = filename
+        self.setText(world_name)
+        self.clicked.connect(self.planet_clicked)
+
+    def planet_clicked(self):
+        self.parent.planet_clicked(self.filename)
+
+class PlayerNameButton(QtWidgets.QPushButton):
+    """
+    Ridiculous little class, but it lets us know which button was clicked, easily.
+    """
+
+    def __init__(self, parent, player, mtime):
+        super().__init__(parent)
+        self.parent = parent
+        self.player = player
+        human_date = datetime.datetime.fromtimestamp(mtime).strftime('%c')
+        # TODO: meh, as usual, getting HTML/rich text inside a Qt widget is hard.
+        # Would like to Bold the name here, but I don't think it's worth it.
+        self.setText("{}\n{}".format(player.name, human_date))
+        self.clicked.connect(self.player_clicked)
+
+    def player_clicked(self):
+        self.parent.player_clicked(self.player)
+
+class OpenByPlanetName(QtWidgets.QDialog):
+    """
+    Dialog to open a world by planet name, rather than by filename
+    """
+
+    def __init__(self, parent, player):
+        super().__init__(parent)
+        self.player = player
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setMinimumSize(400, 300)
+        self.setWindowTitle('Load Starbound World')
+
         self.chosen_filename = None
+
+        # Layout info
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Title
+        title_label = QtWidgets.QLabel('Open Starbound World for {}'.format(player.name), self)
+        title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
+        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+
+        # Scrolled Area (planets)
+        self.scroll = QtWidgets.QScrollArea(self)
+        self.scroll.setWidgetResizable(True)
+
+        # Scroll Contents
+        contents = QtWidgets.QWidget(self)
+        self.grid = QtWidgets.QGridLayout()
+        contents.setLayout(self.grid)
+
+        # Initial view: players
+        for idx, (world_name, filename) in enumerate(sorted(player.get_worlds())):
+            self.grid.addWidget(PlanetNameButton(self, world_name, filename), idx, 0)
+        self.grid.addWidget(QtWidgets.QLabel(''), idx+1, 0)
+        self.grid.setRowStretch(idx+1, 1)
+
+        # Add our contents to the scroll widget
+        layout.addWidget(self.scroll, 1)
+        self.scroll.setWidget(contents)
+
+        # Buttons
+        buttonbox = QtWidgets.QDialogButtonBox(self)
+        buttonbox.addButton(QtWidgets.QDialogButtonBox.Cancel)
+        buttonbox.rejected.connect(self.reject)
+        layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
+
+    def planet_clicked(self, filename):
+        """
+        A planet was chosen
+        """
+        self.parent().planet_clicked(filename)
+        self.accept()
+
+class OpenByPlayerName(QtWidgets.QDialog):
+    """
+    Dialog to open a world by player name, rather than by filename
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setMinimumSize(400, 300)
+        self.setWindowTitle('Load Starbound World')
+
+        self.chosen_filename = None
+
+        # Layout info
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Title
+        title_label = QtWidgets.QLabel('Open Starbound World', self)
+        title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
+        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+
+        # Scrolled Area (players, planets)
+        self.scroll = QtWidgets.QScrollArea(self)
+        self.scroll.setWidgetResizable(True)
+
+        # Scroll Contents
+        self.contents = QtWidgets.QWidget(self)
+        self.grid = QtWidgets.QGridLayout()
+        self.contents.setLayout(self.grid)
+
+        # Initial view: players
+        self.buttons = []
+        for idx, (mtime, player) in enumerate(StarboundData.get_all_players()):
+            button = PlayerNameButton(self, player, mtime)
+            self.buttons.append(button)
+            self.grid.addWidget(button, idx, 0)
+        self.grid.addWidget(QtWidgets.QLabel(''), idx+1, 0)
+        self.grid.setRowStretch(idx+1, 1)
+
+        # Add our contents to the scroll widget
+        layout.addWidget(self.scroll, 1)
+        self.scroll.setWidget(self.contents)
+
+        # Buttons
+        buttonbox = QtWidgets.QDialogButtonBox(self)
+        buttonbox.addButton(QtWidgets.QDialogButtonBox.Cancel)
+        buttonbox.rejected.connect(self.reject)
+        layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
+
+    def player_clicked(self, player):
+        """
+        A player was chosen; get its planets.
+        """
+        self.setEnabled(False)
+        for button in self.buttons:
+            button.setEnabled(False)
+        dialog = OpenByPlanetName(self, player)
+        dialog.exec()
+        self.setEnabled(True)
+        for button in self.buttons:
+            button.setEnabled(True)
+
+    def planet_clicked(self, filename):
+        """
+        A planet was chosen
+        """
+        self.chosen_filename = filename
+        self.accept()
 
 class GUI(QtWidgets.QMainWindow):
     """
@@ -680,7 +835,7 @@ class GUI(QtWidgets.QMainWindow):
         if filename:
             self.load_map(filename)
         else:
-            self.action_open_file()
+            self.action_open_name()
 
     def initUI(self):
 
@@ -756,6 +911,14 @@ class GUI(QtWidgets.QMainWindow):
         """
         Opens by character/system name
         """
+
+        dialog = OpenByPlayerName(self)
+        dialog.exec()
+        if dialog.chosen_filename:
+            self.load_map(dialog.chosen_filename)
+
+        # Re-focus the main window
+        self.activateWindow()
 
     def load_map(self, filename):
         """

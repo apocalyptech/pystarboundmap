@@ -31,7 +31,7 @@ TODO
  - Zoom
    - Slider
    - `+`/`-` via keyboard
- - Open file menu
+ - Initial open dialog doesn't center on parent window?
  - Progress bar while loading resources
  - Search for item types (ores, quest-related things?)
  - Platforms seem to draw a black area underneath 'em

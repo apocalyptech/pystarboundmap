@@ -395,6 +395,7 @@ class Player(object):
 
     def __init__(self, playerdict):
         self.playerdict = playerdict
+        self.name = playerdict.data['identity']['name']
 
     def get_systems(self):
         """
@@ -579,7 +580,25 @@ class StarboundData(object):
             #        # 29
             #        break
 
-    def get_player(self, player_file):
+    @staticmethod
+    def get_all_players():
+        """
+        Returns a list of tuples describing all players.  Tuples will be of the form
+            (timestamp, Player object)
+        and will be sorted so that the most recently-modified players are first.
+        """
+        entries = []
+        with os.scandir(base_player) as it:
+            for entry in it:
+                if entry.name.endswith('.player'):
+                    player = StarboundData.get_player(entry.path)
+                    entries.append((entry.stat().st_mtime, player))
+        # TODO: sorting by mtime, because that's how Starbound does it.  Should
+        # we at least provide the option for alphabetical?
+        return sorted(entries, reverse=True)
+
+    @staticmethod
+    def get_player(player_file):
         """
         Returns player data, given the specified player file
         """
