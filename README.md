@@ -21,8 +21,7 @@ that project though).
 TODO
 ----
 
- - Choose maps (totally hardcoded to my own savegames at the moment)
- - Add NPCs/Enemies/Monsters?
+ - Add NPCs/Enemies/Monsters/Vehicles?
    - (What's a StagehandEntity, I wonder?)
  - Add liquids
  - Highlight tiles for info
@@ -32,6 +31,8 @@ TODO
    - Slider
    - `+`/`-` via keyboard
  - Initial open dialog doesn't center on parent window?
+ - Open-by-Name dialog doesn't include space stations or moons or
+   anomalies
  - Progress bar while loading resources
  - Search for item types (ores, quest-related things?)
  - Platforms seem to draw a black area underneath 'em
