@@ -881,7 +881,7 @@ class GUI(QtWidgets.QMainWindow):
         self.setCentralWidget(w)
 
         # Main window
-        self.setMinimumSize(self.config.app_w, self.config.app_h)
+        self.setMinimumSize(1050, 700)
         self.resize(self.config.app_w, self.config.app_h)
         self.setWindowTitle('Starbound Mapper')
 
