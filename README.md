@@ -8,6 +8,7 @@ Uses:
  - Python 3
  - python-pillow
  - PyQt5
+ - appdirs
  - [py-starbound](https://github.com/blixt/py-starbound) (by blixt)
 
 **NOTE:** There is still a hardcoded path at the top of `data.py` which defines
@@ -47,7 +48,6 @@ TODO
  - Search for item types (ores, quest-related things?)
  - Platforms seem to draw a black area underneath 'em
  - Visualization of explored areas (as defined by light sources)
- - Remember window geometry between runs
  - Autodetect game location
    - Have some methods for Steam detection via other projects, but
      is there any registry entries or something for non-Steam installs?

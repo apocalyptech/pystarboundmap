@@ -32,6 +32,7 @@ import time
 import datetime
 from PyQt5 import QtWidgets, QtGui, QtCore
 from .data import StarboundData, base_universe
+from .config import Config
 
 class Constants(object):
 
@@ -813,10 +814,11 @@ class GUI(QtWidgets.QMainWindow):
     Main application window
     """
 
-    def __init__(self, app, filename):
+    def __init__(self, app, config, filename):
         super().__init__()
 
         self.app = app
+        self.config = config
 
         # Load data.  This more technically belongs in the Application
         # class but whatever.
@@ -879,14 +881,24 @@ class GUI(QtWidgets.QMainWindow):
         self.setCentralWidget(w)
 
         # Main window
-        self.setMinimumSize(1050, 700)
-        self.resize(1050, 700)
+        self.setMinimumSize(self.config.app_w, self.config.app_h)
+        self.resize(self.config.app_w, self.config.app_h)
         self.setWindowTitle('Starbound Mapper')
+
+    def save_config(self):
+        """
+        Saves our config.  This is wrapped so that whenever we save app
+        config, we also save the window geometry.
+        """
+        self.config.app_w = self.width()
+        self.config.app_h = self.height()
+        self.config.save()
 
     def action_quit(self):
         """
         Handle our "Quit" action.
         """
+        self.save_config()
         self.close()
 
     def action_open_file(self):
@@ -954,5 +966,7 @@ class Application(QtWidgets.QApplication):
 
     def __init__(self, filename=None):
         super().__init__([])
-        self.app = GUI(self, filename)
+
+        c = Config()
+        self.app = GUI(self, Config(), filename)
 
