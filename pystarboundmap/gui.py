@@ -967,6 +967,5 @@ class Application(QtWidgets.QApplication):
     def __init__(self, filename=None):
         super().__init__([])
 
-        c = Config()
         self.app = GUI(self, Config(), filename)
 

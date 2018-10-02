@@ -48,11 +48,15 @@ TODO
  - Search for item types (ores, quest-related things?)
  - Platforms seem to draw a black area underneath 'em
  - Visualization of explored areas (as defined by light sources)
- - Autodetect game location
-   - Have some methods for Steam detection via other projects, but
-     is there any registry entries or something for non-Steam installs?
-     Does Starbound even have non-Steam builds?
+ - Autodetect game location improvements
+   - Theoretically we autodetect Steam install locations now
+   - Completely untested on Windows/Mac
+   - Any way to detect GOG installs?
+   - Any registry entries or whatever in general for Windows, which aren't
+     Steam/GOG specific?
    - Manually choose install dir, regardless
+   - Also at the moment it doesn't actually *use* the autodetected location
+     even if it finds it, but that's coming.
  - Support for mods
  - Performance improvements
    - Resource loading:
