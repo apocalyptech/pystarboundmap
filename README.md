@@ -33,7 +33,7 @@ TODO
  - Add liquids
  - Highlight tiles for info
    - Click for full info
- - Go to spawn points, flags
+ - Go to spawn points, flags, current location, etc
  - Zoom
    - Slider
    - `+`/`-` via keyboard
@@ -70,9 +70,7 @@ TODO
        to a previously-visited area would be less likely to have to re-load.
  - Toggles for various element types?
  - Fancier rendering?  (base map materials have "edges" which we completely
-   ignore at the moment.  I suspect I'll never actually implement this
-   since it'd probably increas our render time for a bunch, and it's not
-   really important for anything you'd want to actually use this for)
+   ignore at the moment.  Would presumably increase render times...
  - Properly handle on/off items (light sources), open/closed doors, etc
  - Properly handle coloration of objects/tiles?
  - Randomize tiles w/ multiple options (dirt, etc, seems to be randomly
