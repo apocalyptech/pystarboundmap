@@ -30,7 +30,6 @@ TODO
 
  - Add NPCs/Enemies/Monsters/Vehicles?
    - (What's a StagehandEntity, I wonder?)
- - Add liquids
  - Highlight tiles for info
    - Click for full info
  - Go to spawn points, flags, current location, etc
@@ -55,6 +54,8 @@ TODO
    - Resource loading:
      - This only takes about 5-6 sec on my machine, so it's not bad,
        but I suspect I could get rid of some spurious PNG conversions
+   - Specific tile types
+     - Scenes with lots of liquids get bogged down a bit...
    - Map loading/rendering:
      - This is pretty slow, and I'll have to profile it to figure out
        where the slowness actually is.  It's more of an annoyance at
@@ -72,6 +73,9 @@ TODO
  - Toggles for various element types?
  - Fancier rendering?  (base map materials have "edges" which we completely
    ignore at the moment.  Would presumably increase render times...
+   - Material edges
+   - Platforms, etc, joining up properly
+   - Liquid levels
  - Properly handle on/off items (light sources), open/closed doors, etc
  - Properly handle coloration of objects/tiles?
  - Randomize tiles w/ multiple options (dirt, etc, seems to be randomly

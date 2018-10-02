@@ -305,6 +305,16 @@ class SBObject(object):
             orient = self.orientations[0]
         return (orient.image, orient.offset[0], orient.offset[1])
 
+class Liquid(object):
+    """
+    Class to hold info about a liquid.  Not much in here, honestly
+    """
+
+    def __init__(self, info):
+        self.info = info
+        self.name = info['name']
+        self.overlay = QtGui.QColor(*info['color'])
+
 class PakTree(object):
     """
     Tree-based dict so we can "browse" pak contents by directory.
@@ -599,6 +609,16 @@ class StarboundData(object):
             #        print('Swarm found at {}'.format(idx))
             #        # 29
             #        break
+
+            # Load in liquid data
+            self.liquids = {}
+            liquid_list = paktree.get_all_recurs_matching_ext('/liquids', '.liquid')
+            for idx, (liquid_path, liquid_name) in enumerate(liquid_list):
+                if progress_callback and idx % progress_update_interval == 0:
+                    progress_callback()
+                liquid_full_path = '{}/{}'.format(liquid_path, liquid_name)
+                liquid = read_config(pakdata.get(liquid_full_path))
+                self.liquids[liquid['liquidId']] = Liquid(liquid)
 
     def get_all_players(self):
         """

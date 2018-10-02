@@ -43,8 +43,9 @@ class Constants(object):
         z_foreground,
         z_objects,
         z_foreground_mod,
+        z_liquids,
         z_overlay,
-        ) = range(8)
+        ) = range(9)
 
 class GUITile(QtWidgets.QGraphicsRectItem):
     """
@@ -71,6 +72,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         # Convenience vars
         materials = self.parent.data.materials
         matmods = self.parent.data.matmods
+        liquids = self.parent.data.liquids
         world = self.parent.world
 
         # Materials (background)
@@ -105,6 +107,17 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             self.mod_foreground.setZValue(Constants.z_foreground_mod)
             self.parent.addItem(self.mod_foreground)
 
+        # Liquids
+        self.liquid = None
+        if tile.liquid in liquids:
+            self.liquid = QtWidgets.QGraphicsRectItem()
+            self.liquid.setRect(0, 0, 8, 8)
+            self.liquid.setPos(gui_x, gui_y)
+            self.liquid.setBrush(QtGui.QBrush(liquids[tile.liquid].overlay))
+            self.liquid.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+            self.liquid.setZValue(Constants.z_liquids)
+            self.parent.addItem(self.liquid)
+
     def unload(self):
         """
         Unloads ourself from the scene
@@ -121,11 +134,15 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         if self.mod_foreground:
             self.parent.removeItem(self.mod_foreground)
             self.mod_foreground = None
+        if self.liquid:
+            self.parent.removeItem(self.liquid)
+            self.liquid = None
 
     def hoverEnterEvent(self, event=None):
         data_table = self.parent.mainwindow.data_table
         materials = self.parent.data.materials
         matmods = self.parent.data.matmods
+        liquids = self.parent.data.liquids
 
         data_table.set_region(self.region.rx, self.region.ry)
         data_table.set_tile(self.x, self.y)
@@ -161,6 +178,14 @@ class GUITile(QtWidgets.QGraphicsRectItem):
                 data_table.set_back_matmod('Unknown ({})'.format(self.tile.background_mod))
             else:
                 data_table.set_back_matmod('')
+
+        if self.tile.liquid in liquids:
+            data_table.set_liquid(liquids[self.tile.liquid].name)
+        else:
+            if self.tile.liquid > 0:
+                data_table.set_liquid('Unknown ({})'.format(self.tile.liquid))
+            else:
+                data_table.set_liquid('')
 
         # TODO: Might want to pre-brighten our images and swap 'em out.  Or
         # at least do so for objects, so we could highlight the whole thing.
@@ -568,6 +593,7 @@ class DataTable(QtWidgets.QWidget):
         self.matmod_label = self.add_row('Fore Mod')
         self.back_mat_label = self.add_row('Back Mat')
         self.back_matmod_label = self.add_row('Back Mod')
+        self.liquid_label = self.add_row('Liquid')
 
         # Spacer at the bottom so that the other cells don't expand
         self.layout.addWidget(QtWidgets.QLabel(),
@@ -605,6 +631,9 @@ class DataTable(QtWidgets.QWidget):
 
     def set_back_matmod(self, mod):
         self.back_matmod_label.setText(mod)
+
+    def set_liquid(self, liquid):
+        self.liquid_label.setText(liquid)
 
 class RegionLoadingNotifier(QtWidgets.QWidget):
     """
