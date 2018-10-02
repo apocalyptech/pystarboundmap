@@ -942,6 +942,7 @@ class GUI(QtWidgets.QMainWindow):
         self.world = None
         self.worlddf = None
         self.data = None
+        self.load_data_dialog = None
         self.initUI()
 
         # Show ourselves
@@ -1098,10 +1099,41 @@ class GUI(QtWidgets.QMainWindow):
         Loads our data
         """
         if self.config.starbound_data_dir:
-            self.data = StarboundData(self.config.starbound_data_dir)
+            # Set up a progress dialog so the user knows something is happening
+            self.load_data_dialog = QtWidgets.QProgressDialog(self)
+            self.load_data_dialog.setWindowTitle('Loading Graphics Resources...')
+            label = QtWidgets.QLabel('<b>Loading Graphics Resources...</b>')
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            self.load_data_dialog.setLabel(label)
+            self.load_data_dialog.setRange(0, 0)
+            self.load_data_dialog.setModal(True)
+            self.load_data_dialog.setMinimumSize(300, 100)
+            self.load_data_dialog.show()
+            self.app.processEvents()
+
+            # Actually load the data
+            self.data = StarboundData(
+                    self.config.starbound_data_dir,
+                    progress_callback=self.load_data_progress_callback,
+                    )
             self.scene.data = self.data
+
+            # Close our progress dialog
+            self.load_data_dialog.close()
+            self.load_data_dialog = None
+
+            # Re-focus the main window
+            self.activateWindow()
         else:
             self.data = None
+
+    def load_data_progress_callback(self):
+        """
+        Used by StarboundData to update our progress bar
+        """
+        if self.load_data_dialog:
+            self.load_data_dialog.setValue(0)
+            self.app.processEvents()
 
     def close_world(self):
         """

@@ -481,13 +481,19 @@ class StarboundData(object):
     base_universe = None
     base_pak = None
 
-    def __init__(self, base_game):
+    def __init__(self, base_game, progress_callback=None):
+        """
+        `base_game` should be the base game installation directory.
+        `progress_callback` can be used to update a progress bar, for some
+        visual feedback while we load things.
+        """
 
         self.base_game = base_game
         self.base_storage = os.path.join(self.base_game, 'storage')
         self.base_player = os.path.join(self.base_storage, 'player')
         self.base_universe = os.path.join(self.base_storage, 'universe')
         self.base_pak = os.path.join(self.base_game, 'assets', 'packed.pak')
+        progress_update_interval = 50
 
         # Read in the data file
         with open(self.base_pak, 'rb') as pakdf:
@@ -528,7 +534,9 @@ class StarboundData(object):
             # Load in our materials
             self.materials = {}
             obj_list = paktree.get_all_recurs_matching_ext('/tiles', '.material')
-            for (obj_path, obj_name) in obj_list:
+            for idx, (obj_path, obj_name) in enumerate(obj_list):
+                if progress_callback and idx % progress_update_interval == 0:
+                    progress_callback()
                 matpath = '{}/{}'.format(obj_path, obj_name)
                 material = json.loads(pakdata.get(matpath))
                 if 'renderTemplate' in material:
@@ -546,7 +554,9 @@ class StarboundData(object):
 
             # Load in our material mods.
             self.matmods = {}
-            for matmod_name in paktree.get_all_matching_ext('/tiles/mods', '.matmod'):
+            for idx, matmod_name in enumerate(paktree.get_all_matching_ext('/tiles/mods', '.matmod')):
+                if progress_callback and idx % progress_update_interval == 0:
+                    progress_callback()
                 # All matmods, at least in the base game, are classicmaterialtemplate
                 matmodpath = '/tiles/mods/{}'.format(matmod_name)
                 matmod = json.loads(pakdata.get(matmodpath))
@@ -556,7 +566,9 @@ class StarboundData(object):
             start = time.time()
             self.objects = {}
             obj_list = paktree.get_all_recurs_matching_ext('/objects', '.object')
-            for (obj_path, obj_name) in obj_list:
+            for idx, (obj_path, obj_name) in enumerate(obj_list):
+                if progress_callback and idx % progress_update_interval == 0:
+                    progress_callback()
                 obj_full_path = '{}/{}'.format(obj_path, obj_name)
                 obj_json = read_config(pakdata.get(obj_full_path))
                 self.objects[obj_json['objectName']] = SBObject(obj_json, obj_name, obj_path, pakdata)
@@ -569,7 +581,9 @@ class StarboundData(object):
             start = time.time()
             self.plants = {}
             img_list = paktree.get_all_recurs_matching_ext('/plants', '.png')
-            for (img_path, img_name) in img_list:
+            for idx, (img_path, img_name) in enumerate(img_list):
+                if progress_callback and idx % progress_update_interval == 0:
+                    progress_callback()
                 img_full_path = '{}/{}'.format(img_path, img_name)
                 self.plants[img_full_path] = Plant(img_full_path, pakdata)
             end = time.time()
