@@ -31,7 +31,7 @@ import sys
 import time
 import datetime
 from PyQt5 import QtWidgets, QtGui, QtCore
-from .data import StarboundData, base_universe
+from .data import StarboundData
 from .config import Config
 
 class Constants(object):
@@ -310,12 +310,12 @@ class MapScene(QtWidgets.QGraphicsScene):
     Our main scene which renders the map.
     """
 
-    def __init__(self, parent, mainwindow, data):
+    def __init__(self, parent, mainwindow):
 
         super().__init__(parent)
         self.parent = parent
         self.mainwindow = mainwindow
-        self.data = data
+        self.data = None
         self.world = None
         self.regions = {}
         self.loaded_regions = set()
@@ -511,16 +511,29 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.loaded_regions = set()
         self.given_center = False
 
+    def refresh(self, data):
+        """
+        Refreshes our scene - currently just used when we change data
+        dirs, because it's possible that our graphics may have changed,
+        etc.
+        """
+        for region in self.loaded_regions:
+            self.regions[region].unload()
+        super().clear()
+        self.data = data
+        self.loaded_regions = set()
+        self.draw_visible_area()
+
 class MapArea(QtWidgets.QGraphicsView):
     """
     Main area rendering the map
     """
 
-    def __init__(self, parent, data):
+    def __init__(self, parent):
 
         super().__init__(parent)
         self.mainwindow = parent
-        self.scene = MapScene(self, parent, data)
+        self.scene = MapScene(self, parent)
         self.setScene(self.scene)
         self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(200, 200, 200)))
         self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
@@ -742,8 +755,9 @@ class OpenByPlayerName(QtWidgets.QDialog):
     Dialog to open a world by player name, rather than by filename
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent):
         super().__init__(parent)
+        self.mainwindow = parent
         self.setModal(True)
         self.setSizeGripEnabled(True)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -772,7 +786,7 @@ class OpenByPlayerName(QtWidgets.QDialog):
 
         # Initial view: players
         self.buttons = []
-        for idx, (mtime, player) in enumerate(StarboundData.get_all_players()):
+        for idx, (mtime, player) in enumerate(self.mainwindow.data.get_all_players()):
             button = PlayerNameButton(self, player, mtime)
             self.buttons.append(button)
             self.grid.addWidget(button, idx, 0)
@@ -809,6 +823,110 @@ class OpenByPlayerName(QtWidgets.QDialog):
         self.chosen_filename = filename
         self.accept()
 
+class SettingsDialog(QtWidgets.QDialog):
+    """
+    Settings dialog.  A bit barren, but what are you gonna do?
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.maingui = parent
+        self.config = parent.config
+
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        self.setWindowTitle('Settings')
+        self.setMinimumSize(700, 150)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Title
+        label = QtWidgets.QLabel('<b>Settings</b>')
+        layout.addWidget(label, 0, QtCore.Qt.AlignCenter)
+
+        # Settings Grid
+        # If we ever get more than a single setting, it'll probably pay
+        # to abstract this a bit
+        settings = QtWidgets.QWidget()
+        grid = QtWidgets.QGridLayout()
+        grid.setColumnStretch(1, 1)
+        settings.setLayout(grid)
+        layout.addWidget(settings, 0)
+
+        # Starbound Data Dir
+        grid.addWidget(QtWidgets.QLabel('<b>Starbound Data Dir:</b> '), 0, 0, QtCore.Qt.AlignRight)
+        self.cur_data_dir = QtWidgets.QLabel('')
+        self.cur_data_dir.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.cur_data_dir.setFrameShape(QtWidgets.QFrame.Panel)
+        self.cur_data_dir.setBackgroundRole(QtGui.QPalette.AlternateBase)
+        self.cur_data_dir.setAutoFillBackground(True)
+        self.set_data_dir_display()
+        grid.addWidget(self.cur_data_dir, 0, 1)
+        starbound_data_dir_button = QtWidgets.QPushButton('Choose', self)
+        starbound_data_dir_button.clicked.connect(self.choose_starbound_data_dir)
+        grid.addWidget(starbound_data_dir_button, 0, 2)
+
+        # Spacer
+        layout.addWidget(QtWidgets.QLabel(''), 1)
+
+        # Buttons
+        buttonbox = QtWidgets.QDialogButtonBox(self)
+        buttonbox.addButton(QtWidgets.QDialogButtonBox.Ok)
+        buttonbox.accepted.connect(self.close)
+        layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
+
+    def set_data_dir_display(self):
+        """
+        Convenience function to report the currently-selected dir
+        """
+        if self.config.starbound_data_dir:
+            self.cur_data_dir.setText('<tt>{}</tt>'.format(self.config.starbound_data_dir))
+        else:
+            self.cur_data_dir.setText('<i>(no value)</i>')
+
+    def choose_starbound_data_dir(self):
+        """
+        Launch a dialog to choose the Starbound install dir
+        """
+        chosen_dir = QtWidgets.QFileDialog.getExistingDirectory(self,
+                'Choose Starbound Install Directory',
+                os.path.join(os.path.realpath(__file__), '..')
+                )
+        if chosen_dir:
+            # Test to make sure that the directory contains what we expect
+            checks = [
+                    os.path.join('assets', 'packed.pak'),
+                    os.path.join('storage', 'player'),
+                    os.path.join('storage', 'universe'),
+                    ]
+            for check in checks:
+                full_path = os.path.join(chosen_dir, check)
+                if not os.path.exists(full_path):
+                    msg = QtWidgets.QMessageBox(self)
+                    msg.setWindowTitle('Invalid Starbound Directory')
+                    msg.setText('<b>Error:</b> the chosen directory does not appear to '
+                            + '<br/>be a valid Starbound install directory')
+                    msg.setIcon(QtWidgets.QMessageBox.Critical)
+                    button = msg.addButton(QtWidgets.QMessageBox.Ok)
+                    msg.setDefaultButton(button)
+                    msg.exec()
+                    return
+
+            # If we got here, our dir should be valid.
+            self.config.starbound_data_dir = chosen_dir
+            self.set_data_dir_display()
+
+    def close(self):
+        """
+        Process closing the window.  Note that if the user closes the dialog
+        w/ Esc (as opposed to Enter or the OK button), this won't actually
+        be called - `reject()` would be needed for that.
+        """
+        self.maingui.save_config()
+        super().close()
+
 class GUI(QtWidgets.QMainWindow):
     """
     Main application window
@@ -820,34 +938,54 @@ class GUI(QtWidgets.QMainWindow):
         self.app = app
         self.config = config
 
-        # Load data.  This more technically belongs in the Application
-        # class but whatever.
-        self.data = StarboundData()
-
         # Initialization stuff
         self.world = None
         self.worlddf = None
+        self.data = None
         self.initUI()
 
         # Show ourselves
         self.show()
 
+        # If we have Starbound data, load it.
+        if self.config.starbound_data_dir:
+            self.load_data()
+        else:
+            self.openfile_menu.setEnabled(False)
+            self.openname_menu.setEnabled(False)
+            msg = QtWidgets.QMessageBox(self)
+            msg.setWindowTitle('Starbound Install Dir Not Found')
+            msg.setText('<html>Starbound install directory was not found. '
+                    + 'Please choose the<br>directory manually in the following '
+                    + 'dialog (also accessible<br>via the <tt>Edit -> Settings</tt> '
+                    + 'menu.')
+            msg.setIcon(QtWidgets.QMessageBox.Warning)
+            button = msg.addButton(QtWidgets.QMessageBox.Ok)
+            msg.setDefaultButton(button)
+            msg.exec()
+            self.action_settings()
+
         # If we've been passed a filename, load it.  Otherwise, open the
         # loading dialog
-        if filename:
-            self.load_map(filename)
-        else:
-            self.action_open_name()
+        if self.data:
+            if filename:
+                self.load_map(filename)
+            else:
+                self.action_open_name()
 
     def initUI(self):
 
         # File Menu
         menubar = self.menuBar()
         filemenu = menubar.addMenu('&File')
-        filemenu.addAction('&Open File', self.action_open_file, 'Ctrl+O')
-        filemenu.addAction('Open by &Name', self.action_open_name, 'Ctrl+N')
+        self.openfile_menu = filemenu.addAction('&Open File', self.action_open_file, 'Ctrl+O')
+        self.openname_menu = filemenu.addAction('Open by &Name', self.action_open_name, 'Ctrl+N')
         filemenu.addSeparator()
         filemenu.addAction('&Quit', self.action_quit, 'Ctrl+Q')
+
+        # Edit Menu
+        editmenu = menubar.addMenu('&Edit')
+        editmenu.addAction('&Settings', self.action_settings, 'Ctrl+S')
 
         # HBox to store our main widgets
         w = QtWidgets.QWidget()
@@ -873,7 +1011,7 @@ class GUI(QtWidgets.QMainWindow):
         vbox.addWidget(self.region_loading, 0)
 
         # Main Widget
-        self.maparea = MapArea(self, self.data)
+        self.maparea = MapArea(self)
         self.scene = self.maparea.scene
         hbox.addWidget(self.maparea, 1)
 
@@ -910,7 +1048,7 @@ class GUI(QtWidgets.QMainWindow):
 
         (filename, filefilter) = QtWidgets.QFileDialog.getOpenFileName(self,
                 'Open Starbound World...',
-                base_universe,
+                self.data.base_universe,
                 'World Files (*.world);;All Files (*.*)')
 
         if filename and filename != '':
@@ -932,18 +1070,57 @@ class GUI(QtWidgets.QMainWindow):
         # Re-focus the main window
         self.activateWindow()
 
-    def load_map(self, filename):
+    def action_settings(self):
         """
-        Hardcoded for now
+        Open our settings dialog
         """
 
-        # Close out any old map we have
+        cur_datadir = self.config.starbound_data_dir
+        settings = SettingsDialog(self)
+        settings.exec()
+        new_datadir = self.config.starbound_data_dir
+        if new_datadir:
+            if cur_datadir != new_datadir:
+                self.load_data()
+                self.scene.refresh(self.data)
+            self.openfile_menu.setEnabled(True)
+            self.openname_menu.setEnabled(True)
+        else:
+            self.close_world()
+            self.openfile_menu.setEnabled(False)
+            self.openname_menu.setEnabled(False)
+
+        # Re-focus the main window
+        self.activateWindow()
+
+    def load_data(self):
+        """
+        Loads our data
+        """
+        if self.config.starbound_data_dir:
+            self.data = StarboundData(self.config.starbound_data_dir)
+            self.scene.data = self.data
+        else:
+            self.data = None
+
+    def close_world(self):
+        """
+        Closes the open world, if we have one
+        """
         if self.world:
             self.world = None
             self.scene.clear()
         if self.worlddf:
             self.worlddf.close()
             self.worlddf = None
+
+    def load_map(self, filename):
+        """
+        Loads the map from `filename`
+        """
+
+        # Close out any old map we have
+        self.close_world()
 
         # Now load the new one
         # TODO: check for exceptions, etc.
@@ -954,10 +1131,6 @@ class GUI(QtWidgets.QMainWindow):
         else:
             # TODO: Handle this better, too.
             raise Exception('World not found')
-
-        #player = self.data.get_player(playerfile)
-        #if player:
-        #    self.world = player.get_worlds(world_name)
 
 class Application(QtWidgets.QApplication):
     """

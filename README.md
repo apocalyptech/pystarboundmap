@@ -11,14 +11,6 @@ Uses:
  - appdirs
  - [py-starbound](https://github.com/blixt/py-starbound) (by blixt)
 
-**NOTE:** There is still a hardcoded path at the top of `data.py` which defines
-where to find the Starbound install dir, so be sure to change it yourself:
-
-```py
-# Hardcoded stuff for now
-base_game = '/usr/local/games/Steam/SteamApps/common/Starbound'
-```
-
 Screenshot
 ----------
 
@@ -26,6 +18,10 @@ This is pretty much it, at the moment.  You can open new maps by filename,
 or by choosing a character's name followed by a planet name (note that that
 one doesn't yet let you open moons, space stations, etc).  Click-and-drag
 will move the map around, in addition to your usual scrolling methods.
+
+The game will attempt to autodetect your Starbound installation directory
+(which is *completely* untested on Windows/Mac), but a settings screen
+exists for you to manually choose it.
 
 [![pystarboundmap screenshot](screenshot.png)](screenshot.png)
 
@@ -54,9 +50,6 @@ TODO
    - Any way to detect GOG installs?
    - Any registry entries or whatever in general for Windows, which aren't
      Steam/GOG specific?
-   - Manually choose install dir, regardless
-   - Also at the moment it doesn't actually *use* the autodetected location
-     even if it finds it, but that's coming.
  - Support for mods
  - Performance improvements
    - Resource loading:

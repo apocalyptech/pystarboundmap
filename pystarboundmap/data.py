@@ -36,13 +36,6 @@ import starbound
 from PIL import Image
 from PyQt5 import QtGui
 
-# Hardcoded stuff for now
-base_game = '/usr/local/games/Steam/SteamApps/common/Starbound'
-base_storage = os.path.join(base_game, 'storage')
-base_player = os.path.join(base_storage, 'player')
-base_universe = os.path.join(base_storage, 'universe')
-base_pak = os.path.join(base_game, 'assets', 'packed.pak')
-
 def read_config(config_data):
     """
     Attempts to parse a starbound .config file.  These are very nearly JSON,
@@ -393,8 +386,9 @@ class Player(object):
     or two.
     """
 
-    def __init__(self, playerdict):
+    def __init__(self, playerdict, base_universe):
         self.playerdict = playerdict
+        self.base_universe = base_universe
         self.name = playerdict.data['identity']['name']
 
     def get_systems(self):
@@ -445,7 +439,7 @@ class Player(object):
             #   mappedPlanets: Planets (doesn't seem to include moons?)
             for planet in systemdict['mappedPlanets']:
                 world_filename = os.path.join(
-                        base_universe,
+                        self.base_universe,
                         '{}_{}.world'.format(base_system_name, planet['planet']))
                 (world, worlddf) = StarboundData.open_world(world_filename)
                 # Keys in world.metadata:
@@ -481,10 +475,22 @@ class StarboundData(object):
     Master class to hold the starbound data that we're interested in.
     """
 
-    def __init__(self, pakfile=base_pak):
+    base_game = None
+    base_storage = None
+    base_player = None
+    base_universe = None
+    base_pak = None
+
+    def __init__(self, base_game):
+
+        self.base_game = base_game
+        self.base_storage = os.path.join(self.base_game, 'storage')
+        self.base_player = os.path.join(self.base_storage, 'player')
+        self.base_universe = os.path.join(self.base_storage, 'universe')
+        self.base_pak = os.path.join(self.base_game, 'assets', 'packed.pak')
 
         # Read in the data file
-        with open(pakfile, 'rb') as pakdf:
+        with open(self.base_pak, 'rb') as pakdf:
 
             paktree = PakTree()
             pakdata = starbound.SBAsset6(pakdf)
@@ -580,31 +586,29 @@ class StarboundData(object):
             #        # 29
             #        break
 
-    @staticmethod
-    def get_all_players():
+    def get_all_players(self):
         """
         Returns a list of tuples describing all players.  Tuples will be of the form
             (timestamp, Player object)
         and will be sorted so that the most recently-modified players are first.
         """
         entries = []
-        with os.scandir(base_player) as it:
+        with os.scandir(self.base_player) as it:
             for entry in it:
                 if entry.name.endswith('.player'):
-                    player = StarboundData.get_player(entry.path)
+                    player = self.get_player(entry.path)
                     entries.append((entry.stat().st_mtime, player))
         # TODO: sorting by mtime, because that's how Starbound does it.  Should
         # we at least provide the option for alphabetical?
         return sorted(entries, reverse=True)
 
-    @staticmethod
-    def get_player(player_file):
+    def get_player(self, player_file):
         """
         Returns player data, given the specified player file
         """
         player = None
-        with open(os.path.join(base_player, player_file), 'rb') as playerdf:
-            player = Player(starbound.read_sbvj01(playerdf))
+        with open(os.path.join(self.base_player, player_file), 'rb') as playerdf:
+            player = Player(starbound.read_sbvj01(playerdf), self.base_universe)
         return player
 
     @staticmethod
