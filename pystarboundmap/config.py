@@ -62,7 +62,7 @@ class Config(object):
 
     def __init__(self):
 
-        self.config_dir = appdirs.user_config_dir('pystarboundmap')
+        self.config_dir = appdirs.user_config_dir('pystarboundmap', 'Apocalyptech')
         self.config_file = os.path.join(self.config_dir, 'pystarboundmap.conf')
 
         self.load()
