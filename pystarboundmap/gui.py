@@ -757,7 +757,8 @@ class OpenByPlanetName(QtWidgets.QDialog):
         contents.setLayout(self.grid)
 
         # Initial view: players
-        for idx, (world_name, filename) in enumerate(sorted(player.get_worlds())):
+        idx = -1
+        for idx, (_, world_name, filename) in enumerate(sorted(player.get_worlds(parent.mainwindow.data))):
             self.grid.addWidget(PlanetNameButton(self, world_name, filename), idx, 0)
         self.grid.addWidget(QtWidgets.QLabel(''), idx+1, 0)
         self.grid.setRowStretch(idx+1, 1)
@@ -1079,7 +1080,7 @@ class GUI(QtWidgets.QMainWindow):
         (filename, filefilter) = QtWidgets.QFileDialog.getOpenFileName(self,
                 'Open Starbound World...',
                 self.data.base_universe,
-                'World Files (*.world);;All Files (*.*)')
+                'World Files (*.world *.tempworld *.shipworld);;All Files (*.*)')
 
         if filename and filename != '':
             self.load_map(filename)

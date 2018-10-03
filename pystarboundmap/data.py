@@ -421,64 +421,76 @@ class Player(object):
             systemlist = v['systems']
             return systemlist
 
-    def get_worlds(self):
+    def get_worlds(self, data):
         """
-        Returns a list of all planets known to the user, as a list of
-        tuples of the form:
-            (world_name, filename)
+        Given a StarboundData object `data`, returns a list of all worlds
+        known to the user, as a list of tuples of the form:
+            (sortable_name, world_name, filename)
         
         Note that this has to actually load in world files to get the
         names.
         """
 
-        planets = []
+        worlds = []
+        (world_dict, extra_uuid) = data.get_worlds()
 
+        # Add in our own spaceship, if we've got it
+        ship_path = os.path.join(data.base_player, '{}.shipworld'.format(self.playerdict.data['uuid']))
+        if os.path.exists(ship_path):
+            (world, worlddf) = StarboundData.open_world(ship_path)
+            worlds.append((
+                'aaaaa',
+                'Starship',
+                ship_path,
+                ))
+            worlddf.close()
+
+        # Loop through all systems we've explored
         for (coords, systemdict) in self.get_systems():
             base_system_name = '{}_{}_{}'.format(*coords)
 
-            # Nothing actually useful to us in here, it seems...
-            #with open(
-            #        os.path.join(base_universe, '{}.system'.format(base_system_name)),
-            #        'rb') as systemdf:
-            #    system = starbound.read_sbvj01(systemdf)
-            #    print(system)
+            if base_system_name in world_dict:
+                detected_system_name = None
+                for planet in systemdict['mappedPlanets']:
+                    if planet['planet'] in world_dict[base_system_name]:
+                        for filename in world_dict[base_system_name][planet['planet']]:
+                            (world, worlddf) = StarboundData.open_world(filename)
+                            raw_name = world.metadata['worldTemplate']['celestialParameters']['name']
+                            #print('Found world {}, type {}, size {}x{} - Subtypes:'.format(
+                            #    world_name,
+                            #    cp['parameters']['worldType'],
+                            #    world.width,
+                            #    world.height,
+                            #    ))
+                            #for subtype in cp['parameters']['terrestrialType']:
+                            #    print(' * {}'.format(subtype))
 
-            # in systemdict, there's three keys:
-            #   mappedObjects: Space stations and the like, it seems
-            #   bookmarks: Bookmarks, presumably
-            #   mappedPlanets: Planets (doesn't seem to include moons?)
-            for planet in systemdict['mappedPlanets']:
-                world_filename = os.path.join(
-                        self.base_universe,
-                        '{}_{}.world'.format(base_system_name, planet['planet']))
-                (world, worlddf) = StarboundData.open_world(world_filename)
-                # Keys in world.metadata:
-                #   centralStructure
-                #   spawningEnabled
-                #   adjustPlayerStart
-                #   protectedDungeonIds
-                #   playerStart
-                #   dungeonIdBreathable
-                #   respawnInWorld
-                #   worldTemplate
-                #   worldProperties
-                #   dungeonIdGravity
-                #print(world.metadata)
-                cp = world.metadata['worldTemplate']['celestialParameters']
-                name = strip_colors(cp['name'])
-                #print('Found world {}, type {}, size {}x{} - Subtypes:'.format(
-                #    world_name,
-                #    cp['parameters']['worldType'],
-                #    world.width,
-                #    world.height,
-                #    ))
-                #for subtype in cp['parameters']['terrestrialType']:
-                #    print(' * {}'.format(subtype))
-                planets.append((name, world_filename))
-                worlddf.close()
+                            # This is the only way I can find to try and associate a system
+                            # to its name (only really useful in the uuid checks below).  Alas!
+                            if not detected_system_name:
+                                detected_system_name = re.sub(r'(.*?) \^.*', r'\1', raw_name)
+
+                            worlds.append((
+                                StarboundData.world_name_to_sortable(raw_name),
+                                strip_colors(raw_name),
+                                filename,
+                                ))
+                            worlddf.close()
+
+                # Now loop through any extra worlds we found via UUID
+                if not detected_system_name:
+                    detected_system_name = '(Unknown System)'
+                for uuid in systemdict['mappedObjects'].keys():
+                    if uuid in extra_uuid:
+                        (filename, description) = extra_uuid[uuid]
+                        (world, worlddf) = StarboundData.open_world(filename)
+                        sort_name = '{} 99 - {}'.format(detected_system_name, description).lower()
+                        full_name = '{} - {}'.format(detected_system_name, description)
+                        worlds.append((sort_name, full_name, filename))
+                        worlddf.close()
 
         # Return our list
-        return planets
+        return worlds
 
 class StarboundData(object):
     """
@@ -490,6 +502,21 @@ class StarboundData(object):
     base_player = None
     base_universe = None
     base_pak = None
+
+    world_name_sortable_conversions = [
+            ('^green;I^white;', '01'),
+            ('^green;II^white;', '02'),
+            ('^green;III^white;', '03'),
+            ('^green;IV^white;', '04'),
+            ('^green;V^white;', '05'),
+            ('^green;VI^white;', '06'),
+            ('^green;VII^white;', '07'),
+            ('^green;VIII^white;', '08'),
+            ('^green;IX^white;', '09'),
+            ('^green;X^white;', '10'),
+            ('^green;XI^white;', '11'),
+            ('^green;XII^white;', '12'),
+            ]
 
     def __init__(self, base_game, progress_callback=None):
         """
@@ -644,6 +671,63 @@ class StarboundData(object):
         with open(os.path.join(self.base_player, player_file), 'rb') as playerdf:
             player = Player(starbound.read_sbvj01(playerdf), self.base_universe)
         return player
+
+    def get_worlds(self):
+        """
+        Get available worlds from the `universe` dir.  Useful when trying to find out
+        what worlds are available for a given user, since there's otherwise not really
+        a directory of those, apart from what planets have been "visited" (but that
+        doesn't actually have anything to do with what planets have been landed on,
+        and thus which worlds have maps).
+
+        Returns a tuple - the first element will be a nested dict with the top-level
+        keys being the string "coordinates" of the system, as three underscore-
+        separated numbers, and the next-level keys being the number of the planet.
+        The value for that key will be a list of filenames.
+
+        The second element of the tuple will be a dict whose keys are UUIDs.  The
+        values will be a tuple whose first element is the filenames, and the second
+        element is the descriptive text found in the filename.  (These will be random
+        encounters (if they've been saved) or space stations or the like, and don't
+        really have any useful text to show the user other than what's in the filename.)
+        """
+        worlds = {}
+        extra_uuids = {}
+        for filename in os.listdir(self.base_universe):
+            match = re.match(r'([-0-9]+_[-0-9]+_[-0-9]+)_(\d+)(_(\d+))?.world', filename)
+            if match:
+                system = match.group(1)
+                planet_num = int(match.group(2))
+                if match.group(4) is None:
+                    moon_num = None
+                else:
+                    moon_num = int(match.group(4))
+                if system not in worlds:
+                    worlds[system] = {}
+                if planet_num not in worlds[system]:
+                    worlds[system][planet_num] = []
+                worlds[system][planet_num].append(os.path.join(self.base_universe, filename))
+            else:
+                match = re.match(r'(.*)-([0-9a-f]{32})-(\d+).(temp)?world', filename)
+                if match:
+                    description = match.group(1)
+                    uuid = match.group(2)
+                    num = int(match.group(3))
+                    is_temp = match.group(4)
+                    extra_uuids[uuid] = (os.path.join(self.base_universe, filename), description)
+        return (worlds, extra_uuids)
+
+    @staticmethod
+    def world_name_to_sortable(name):
+        """
+        Given a raw world name (with color highlights and everything), convert
+        it to a string that will sort properly using regular ol' alphanumerics.
+        This is basically just converting the roman numerals into numbers.
+        """
+        for (old, new) in StarboundData.world_name_sortable_conversions:
+            if old in name:
+                return name.replace(old, new).lower()
+        return name.lower()
 
     @staticmethod
     def open_world(filename):

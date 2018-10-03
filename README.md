@@ -15,8 +15,7 @@ Screenshot
 ----------
 
 This is pretty much it, at the moment.  You can open new maps by filename,
-or by choosing a character's name followed by a planet name (note that that
-one doesn't yet let you open moons, space stations, etc).  Click-and-drag
+or by choosing a character's name followed by a world name.  Click-and-drag
 will move the map around, in addition to your usual scrolling methods.
 
 The game will attempt to autodetect your Starbound installation directory
@@ -37,8 +36,6 @@ TODO
    - Slider
    - `+`/`-` via keyboard
  - Initial open dialog doesn't center on parent window?
- - Open-by-Name dialog doesn't include space stations or moons or
-   anomalies
  - Minimap
  - Search for item types (ores, quest-related things?)
  - Platforms seem to draw a black area underneath 'em
