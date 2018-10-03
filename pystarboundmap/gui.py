@@ -27,6 +27,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import re
 import sys
 import time
 import datetime
@@ -586,6 +587,10 @@ class DataTable(QtWidgets.QWidget):
 
         self.cur_row = 0
 
+        self.world_name_label = self.add_row('World')
+        self.world_type_label = self.add_row('World Type')
+        self.world_extra_label = self.add_row('Extra Info')
+
         self.region_label = self.add_row('Region')
         self.tile_label = self.add_row('Coords')
 
@@ -613,6 +618,15 @@ class DataTable(QtWidgets.QWidget):
         self.layout.addWidget(data_label, self.cur_row, 1)
         self.cur_row += 1
         return data_label
+
+    def set_world_name(self, world_name):
+        self.world_name_label.setText(world_name)
+
+    def set_world_type(self, world_type):
+        self.world_type_label.setText(world_type)
+
+    def set_world_extra(self, world_extra):
+        self.world_extra_label.setText(world_extra)
 
     def set_region(self, rx, ry):
         self.region_label.setText('({}, {})'.format(rx, ry))
@@ -975,6 +989,7 @@ class GUI(QtWidgets.QMainWindow):
         self.world = None
         self.worlddf = None
         self.data = None
+        self.loaded_filename = None
         self.load_data_dialog = None
         self.initUI()
 
@@ -1192,6 +1207,29 @@ class GUI(QtWidgets.QMainWindow):
         (self.world, self.worlddf) = StarboundData.open_world(filename)
 
         if self.world:
+            self.loaded_filename = filename
+            # We're duplicating some work from Player.get_worlds() here, but
+            # consolidating everything would be tricky, and in the end I
+            # figured it wouldn't be worth it.
+            match = re.match(r'(.*)-([0-9a-f]{32})-(\d+).(temp)?world', os.path.basename(filename))
+            if match:
+                self.data_table.set_world_name(match.group(1))
+                self.data_table.set_world_type('Non-Planet System Object')
+                self.data_table.set_world_extra('')
+            elif filename.endswith('.shipworld'):
+                self.data_table.set_world_name('Starship')
+                self.data_table.set_world_type('Your Starship')
+                self.data_table.set_world_extra('')
+            elif ('worldTemplate' in self.world.metadata
+                    and 'celestialParameters' in self.world.metadata['worldTemplate']):
+                cp = self.world.metadata['worldTemplate']['celestialParameters']
+                self.data_table.set_world_name(StarboundData.strip_colors(cp['name']))
+                self.data_table.set_world_type(cp['parameters']['description'])
+                self.data_table.set_world_extra(', '.join(cp['parameters']['terrestrialType']))
+            else:
+                self.data_table.set_world_name(os.path.basename(filename))
+                self.data_table.set_world_type('Unknown')
+                self.data_table.set_world_extra('')
             self.scene.load_map(self.world)
         else:
             # TODO: Handle this better, too.

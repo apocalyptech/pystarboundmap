@@ -91,6 +91,7 @@ TODO
    config file.
  - Sorting options for by-name opening dialogs.  Right now the players are
    sorted by mtime and the planets by name.  Should be able to toggle both.
+ - Make the lefthand panel resizeable
 
 LICENSE
 -------

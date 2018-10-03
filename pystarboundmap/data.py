@@ -126,12 +126,6 @@ def read_config(config_data):
     odf.seek(0)
     return json.load(odf)
 
-def strip_colors(input_string):
-    """
-    Strips color information from a string
-    """
-    return re.sub('\^\w+?;', '', input_string)
-
 class Material(object):
     """
     Holds info about a material.  Right now we're ignoring all the
@@ -463,7 +457,7 @@ class Player(object):
                                 cp = world.metadata['worldTemplate']['celestialParameters']
                                 raw_name = cp['name']
                                 cache.register_planet(filename,
-                                        world_name=strip_colors(raw_name),
+                                        world_name=StarboundData.strip_colors(raw_name),
                                         world_type=cp['parameters']['description'],
                                         biome_types=', '.join(cp['parameters']['terrestrialType']),
                                         sort_name=StarboundData.world_name_to_sortable(raw_name))
@@ -760,3 +754,10 @@ class StarboundData(object):
             world = starbound.World(worldmm)
             world.read_metadata()
             return (world, worldmm)
+
+    @staticmethod
+    def strip_colors(input_string):
+        """
+        Strips color information from a string
+        """
+        return re.sub('\^\w+?;', '', input_string)

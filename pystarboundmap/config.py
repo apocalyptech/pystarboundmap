@@ -103,6 +103,7 @@ class WorldNameCache(object):
                     'version': self.cache_ver,
                     'mapping': self.mapping,
                     }, df)
+            self.changed = False
 
     def __getitem__(self, path):
         """
