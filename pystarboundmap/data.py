@@ -740,7 +740,7 @@ class StarboundData(object):
         """
         for (old, new) in StarboundData.world_name_sortable_conversions:
             if old in name:
-                return name.replace(old, new).lower()
+                return StarboundData.strip_colors(name.replace(old, new).lower())
         return name.lower()
 
     @staticmethod
