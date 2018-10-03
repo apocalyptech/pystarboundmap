@@ -466,7 +466,10 @@ class Player(object):
                             # This is the only way I can find to try and associate a system
                             # to its name (only really useful in the uuid checks below).  Alas!
                             if not detected_system_name:
-                                detected_system_name = re.sub(r'(.*?) \d.*', r'\1', cache[filename].sort_name)
+                                detected_system_name = re.sub(
+                                        r'^(.*?) (I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)( .*)?$',
+                                        r'\1',
+                                        cache[filename].world_name)
 
                             worlds.append((
                                 cache[filename].sort_name,
