@@ -89,6 +89,8 @@ TODO
    disappears on us between runs; I suspect right now the app will just crash
    and the only way to get it to run again would be to manually clear out the
    config file.
+ - Sorting options for by-name opening dialogs.  Right now the players are
+   sorted by mtime and the planets by name.  Should be able to toggle both.
 
 LICENSE
 -------

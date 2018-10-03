@@ -133,8 +133,7 @@ class Config(object):
 
         self.config_dir = appdirs.user_config_dir('pystarboundmap', 'Apocalyptech')
         self.config_file = os.path.join(self.config_dir, 'pystarboundmap.conf')
-        self.worldname_cache_file = os.path.join(self.config_dir, 'worldname_cache.json')
-        self.worldname_cache = None
+        self.worldname_cache = WorldNameCache(os.path.join(self.config_dir, 'worldname_cache.json'))
 
         self.load()
 
@@ -343,11 +342,3 @@ class Config(object):
                     and os.path.exists(os.path.join(dirname, 'storage'))):
                 return dirname
         return None
-
-    def get_worldname_cache(self):
-        """
-        Returns (and possibly creates) our world name cache
-        """
-        if not self.worldname_cache:
-            self.worldname_cache = WorldNameCache(self.worldname_cache_file)
-        return self.worldname_cache

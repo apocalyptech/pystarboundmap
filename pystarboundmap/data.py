@@ -436,7 +436,7 @@ class Player(object):
         (world_dict, extra_uuid) = data.get_worlds()
 
         # Get our world name cache
-        cache = data.config.get_worldname_cache()
+        cache = data.config.worldname_cache
 
         # Add in our own spaceship, if we've got it
         ship_path = os.path.join(data.base_player, '{}.shipworld'.format(self.playerdict.data['uuid']))
