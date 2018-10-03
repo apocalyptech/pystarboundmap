@@ -37,9 +37,6 @@ TODO
    - `+`/`-` via keyboard
  - Initial open dialog doesn't center on parent window?
  - Minimap
- - Include generic world info on the main screen
-   - Basically, the extra info we report on the load-by-name buttons
-   - Include a copy+pasteable filename
  - Search for item types (ores, quest-related things?)
  - Platforms seem to draw a black area underneath 'em
  - Visualization of explored areas (as defined by light sources)

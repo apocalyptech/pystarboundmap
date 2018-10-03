@@ -590,9 +590,10 @@ class DataTable(QtWidgets.QWidget):
         self.world_name_label = self.add_row('World')
         self.world_type_label = self.add_row('World Type')
         self.world_extra_label = self.add_row('Extra Info')
+        self.world_filename_label = self.add_row('Filename', selectable=True)
 
-        self.region_label = self.add_row('Region')
-        self.tile_label = self.add_row('Coords')
+        self.region_label = self.add_row('Region', selectable=True)
+        self.tile_label = self.add_row('Coords', selectable=True)
 
         self.mat_label = self.add_row('Fore Mat')
         self.matmod_label = self.add_row('Fore Mod')
@@ -606,7 +607,7 @@ class DataTable(QtWidgets.QWidget):
                 1, 2)
         self.layout.setRowStretch(self.cur_row, 1)
 
-    def add_row(self, label):
+    def add_row(self, label, selectable=False):
         label = QtWidgets.QLabel('{}:'.format(label))
         label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.layout.addWidget(label,
@@ -615,6 +616,8 @@ class DataTable(QtWidgets.QWidget):
                 )
         data_label = QtWidgets.QLabel()
         data_label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Minimum)
+        if selectable:
+            data_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.layout.addWidget(data_label, self.cur_row, 1)
         self.cur_row += 1
         return data_label
@@ -627,6 +630,9 @@ class DataTable(QtWidgets.QWidget):
 
     def set_world_extra(self, world_extra):
         self.world_extra_label.setText(world_extra)
+
+    def set_world_filename(self, world_filename):
+        self.world_filename_label.setText(world_filename)
 
     def set_region(self, rx, ry):
         self.region_label.setText('({}, {})'.format(rx, ry))
@@ -1070,7 +1076,17 @@ class GUI(QtWidgets.QMainWindow):
         # Main window
         self.setMinimumSize(1050, 700)
         self.resize(self.config.app_w, self.config.app_h)
-        self.setWindowTitle('Starbound Mapper')
+        self.set_title()
+
+    def set_title(self):
+        """
+        Sets our window title, including our open filename if we happen
+        to have a file open
+        """
+        if self.loaded_filename:
+            self.setWindowTitle('Starbound Mapper | {}'.format(self.loaded_filename))
+        else:
+            self.setWindowTitle('Starbound Mapper')
 
     def save_config(self):
         """
@@ -1208,6 +1224,8 @@ class GUI(QtWidgets.QMainWindow):
 
         if self.world:
             self.loaded_filename = filename
+            self.set_title()
+            self.data_table.set_world_filename(filename)
             # We're duplicating some work from Player.get_worlds() here, but
             # consolidating everything would be tricky, and in the end I
             # figured it wouldn't be worth it.
