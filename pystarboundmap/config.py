@@ -28,6 +28,7 @@
 
 import os
 import json
+import base64
 import appdirs
 import platform
 import configparser
@@ -119,7 +120,9 @@ class WorldNameCache(object):
 
 class Config(object):
     """
-    Class to hold our config/prefs info
+    Class to hold our config/prefs info.  Looking back, I'm really not sure
+    why I didn't just use Qt's settings framework, like I did for FT/BLCMM Explorer.
+    Ah, well, this is done now.
     """
 
     # Starbound Vars
@@ -129,6 +132,7 @@ class Config(object):
     # GUI Vars
     app_w = 1050
     app_h = 700
+    splitter = None
 
     def __init__(self):
 
@@ -153,11 +157,18 @@ class Config(object):
         if os.path.exists(self.config_dir) and os.path.exists(self.config_file):
             config = configparser.ConfigParser()
             config.read(self.config_file)
-            self.starbound_data_dir = config['starbound']['data_dir']
-            if self.starbound_data_dir == 'None':
-                self.starbound_data_dir = None
-            self.app_w = int(config['gui']['app_w'])
-            self.app_h = int(config['gui']['app_h'])
+            if 'starbound' in config:
+                if 'data_dir' in config['starbound']:
+                    self.starbound_data_dir = config['starbound']['data_dir']
+                    if self.starbound_data_dir == 'None':
+                        self.starbound_data_dir = None
+            if 'gui' in config:
+                if 'app_w' in config['gui']:
+                    self.app_w = int(config['gui']['app_w'])
+                if 'app_h' in config['gui']:
+                    self.app_h = int(config['gui']['app_h'])
+                if 'splitter' in config['gui']:
+                    self.splitter = base64.b64decode(config['gui']['splitter'])
         else:
             save_after = True
 
@@ -198,6 +209,7 @@ class Config(object):
         config['gui'] = {}
         config['gui']['app_w'] = str(self.app_w)
         config['gui']['app_h'] = str(self.app_h)
+        config['gui']['splitter'] = base64.b64encode(self.splitter).decode('utf-8')
         with open(self.config_file, 'w') as df:
             config.write(df)
 

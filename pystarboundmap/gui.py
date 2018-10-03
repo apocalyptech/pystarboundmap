@@ -580,7 +580,7 @@ class DataTable(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.setFixedWidth(200)
+        self.setMinimumWidth(200)
 
         self.layout = QtWidgets.QGridLayout()
         self.setLayout(self.layout)
@@ -1042,16 +1042,10 @@ class GUI(QtWidgets.QMainWindow):
         editmenu = menubar.addMenu('&Edit')
         editmenu.addAction('&Settings', self.action_settings, 'Ctrl+S')
 
-        # HBox to store our main widgets
-        w = QtWidgets.QWidget()
-        hbox = QtWidgets.QHBoxLayout()
-        w.setLayout(hbox)
-
         # Lefthand side vbox
         lh = QtWidgets.QWidget()
         vbox = QtWidgets.QVBoxLayout()
         lh.setLayout(vbox)
-        hbox.addWidget(lh, 0, QtCore.Qt.AlignLeft)
 
         # table to store data display
         self.data_table = DataTable(self)
@@ -1068,10 +1062,20 @@ class GUI(QtWidgets.QMainWindow):
         # Main Widget
         self.maparea = MapArea(self)
         self.scene = self.maparea.scene
-        hbox.addWidget(self.maparea, 1)
+
+        # Splitter to store our main widgets
+        self.splitter = QtWidgets.QSplitter()
+        self.splitter.addWidget(lh)
+        self.splitter.addWidget(self.maparea)
+        self.splitter.setStretchFactor(0, 0)
+        self.splitter.setStretchFactor(1, 1)
+
+        # Restore splitter settings, if we have any
+        if self.config.splitter:
+            self.splitter.restoreState(self.config.splitter)
 
         # Central Widget
-        self.setCentralWidget(w)
+        self.setCentralWidget(self.splitter)
 
         # Main window
         self.setMinimumSize(1050, 700)
@@ -1095,6 +1099,7 @@ class GUI(QtWidgets.QMainWindow):
         """
         self.config.app_w = self.width()
         self.config.app_h = self.height()
+        self.config.splitter = self.splitter.saveState()
         self.config.save()
 
     def action_quit(self):
