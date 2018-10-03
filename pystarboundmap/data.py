@@ -427,24 +427,27 @@ class Player(object):
         known to the user, as a list of tuples of the form:
             (sortable_name, world_name, filename)
         
-        Note that this has to actually load in world files to get the
-        names.
+        Note that this has to actually load in world files to get the names
+        on the first runthrough, but we *do* now cache the name information,
+        so subsequent listings should be much faster.
         """
 
         worlds = []
         (world_dict, extra_uuid) = data.get_worlds()
 
+        # Get our world name cache
+        cache = data.config.get_worldname_cache()
+
         # Add in our own spaceship, if we've got it
         ship_path = os.path.join(data.base_player, '{}.shipworld'.format(self.playerdict.data['uuid']))
         if os.path.exists(ship_path):
-            (world, worlddf) = StarboundData.open_world(ship_path)
+            if ship_path not in cache:
+                cache.register_other(ship_path, 'Starship', 'Your Starship', 'aaaaa')
             worlds.append((
-                'aaaaa',
-                'Starship',
-                ship_path,
-                'Your Starship',
-                ))
-            worlddf.close()
+                cache[ship_path].sort_name,
+                cache[ship_path].world_name,
+                cache[ship_path].extra_desc,
+                ship_path))
 
         # Loop through all systems we've explored
         for (coords, systemdict) in self.get_systems():
@@ -455,26 +458,28 @@ class Player(object):
                 for planet in systemdict['mappedPlanets']:
                     if planet['planet'] in world_dict[base_system_name]:
                         for filename in world_dict[base_system_name][planet['planet']]:
-                            (world, worlddf) = StarboundData.open_world(filename)
-                            cp = world.metadata['worldTemplate']['celestialParameters']
-                            raw_name = cp['name']
-                            extra_text = "{}: {}".format(
-                                    cp['parameters']['description'],
-                                    ', '.join(cp['parameters']['terrestrialType']),
-                                    )
+                            if filename not in cache:
+                                (world, worlddf) = StarboundData.open_world(filename)
+                                cp = world.metadata['worldTemplate']['celestialParameters']
+                                raw_name = cp['name']
+                                cache.register_planet(filename,
+                                        world_name=strip_colors(raw_name),
+                                        world_type=cp['parameters']['description'],
+                                        biome_types=', '.join(cp['parameters']['terrestrialType']),
+                                        sort_name=StarboundData.world_name_to_sortable(raw_name))
+                                worlddf.close()
 
                             # This is the only way I can find to try and associate a system
                             # to its name (only really useful in the uuid checks below).  Alas!
                             if not detected_system_name:
-                                detected_system_name = re.sub(r'(.*?) \^.*', r'\1', raw_name)
+                                detected_system_name = re.sub(r'(.*?) \d.*', r'\1', cache[filename].sort_name)
 
                             worlds.append((
-                                StarboundData.world_name_to_sortable(raw_name),
-                                strip_colors(raw_name),
+                                cache[filename].sort_name,
+                                cache[filename].world_name,
+                                cache[filename].extra_desc,
                                 filename,
-                                extra_text,
                                 ))
-                            worlddf.close()
 
                 # Now loop through any extra worlds we found via UUID
                 if not detected_system_name:
@@ -482,11 +487,22 @@ class Player(object):
                 for uuid in systemdict['mappedObjects'].keys():
                     if uuid in extra_uuid:
                         (filename, description) = extra_uuid[uuid]
-                        (world, worlddf) = StarboundData.open_world(filename)
-                        sort_name = '{} 99 - {}'.format(detected_system_name, description).lower()
-                        full_name = '{} - {}'.format(detected_system_name, description)
-                        worlds.append((sort_name, full_name, filename, 'Non-Planet System Object'))
-                        worlddf.close()
+                        if filename not in cache:
+                            cache.register_other(filename,
+                                    world_name='{} - {}'.format(detected_system_name, description),
+                                    extra_desc='Non-Planet System Object',
+                                    sort_name='{} 99 - {}'.format(detected_system_name, description).lower(),
+                                    )
+                        worlds.append((
+                            cache[filename].sort_name,
+                            cache[filename].world_name,
+                            cache[filename].extra_desc,
+                            filename,
+                            ))
+
+        # Save our cache, if anything's changed
+        if cache.changed:
+            cache.save()
 
         # Return our list
         return worlds
@@ -517,14 +533,16 @@ class StarboundData(object):
             ('^green;XII^white;', '12'),
             ]
 
-    def __init__(self, base_game, progress_callback=None):
+    def __init__(self, config, progress_callback=None):
         """
-        `base_game` should be the base game installation directory.
-        `progress_callback` can be used to update a progress bar, for some
-        visual feedback while we load things.
+        `config` should be a Config object (which will have the base game
+        installation directory info).  `progress_callback` can be used to
+        update a progress bar, for some visual feedback while we load
+        things.
         """
 
-        self.base_game = base_game
+        self.config = config
+        self.base_game = config.starbound_data_dir
         self.base_storage = os.path.join(self.base_game, 'storage')
         self.base_player = os.path.join(self.base_storage, 'player')
         self.base_universe = os.path.join(self.base_storage, 'universe')

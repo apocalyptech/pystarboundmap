@@ -27,9 +27,11 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import json
 import appdirs
 import platform
 import configparser
+from collections import namedtuple
 
 # OS-specific imports
 cur_os = None
@@ -46,6 +48,73 @@ elif system == 'Linux':
     cur_os = OS_LINUX
 else:
     print('Warning: Platform not detected, cannot attempt game autodetection')
+
+class WorldNameCache(object):
+    """
+    Simple object to cache world name information from our world files, so that
+    we don't have to keep parsing the world file every time the open-by-name
+    dialog is open.
+    """
+
+    cache_ver = 1
+    WorldName = namedtuple('WorldName', [
+        'sort_name',
+        'world_name',
+        'extra_desc',
+        ])
+
+    def __init__(self, filename):
+        self.filename = filename
+        self.mapping = {}
+        self.changed = False
+
+        if os.path.exists(filename):
+            with open(filename, 'r') as df:
+                parsed_file = json.load(df)
+                if ('version' in parsed_file
+                        and parsed_file['version'] == self.cache_ver
+                        and 'mapping' in parsed_file):
+                    self.mapping = parsed_file['mapping']
+
+    def register_planet(self, path, world_name, world_type, biome_types, sort_name):
+        """
+        Registers the name of a planet at `path`, with world name `world_name`,
+        `world_type` and `biome_types`.  `sort_name` is the key the GUI will use
+        to sort, when sorting alphabetically.
+        """
+        self.mapping[path] = (sort_name, world_name, '{}: {}'.format(world_type, biome_types))
+        self.changed = True
+
+    def register_other(self, path, world_name, extra_desc, sort_name):
+        """
+        Registers the name of a non-planet world at `path`, with world name
+        `world_name` and `extra_desc`.  `sort_name` is the key the GUI will use
+        to sort, when sorting alphabetically.
+        """
+        self.mapping[path] = (sort_name, world_name, extra_desc)
+        self.changed = True
+
+    def save(self):
+        """
+        Saves ourself to disk
+        """
+        with open(self.filename, 'w') as df:
+            json.dump({
+                    'version': self.cache_ver,
+                    'mapping': self.mapping,
+                    }, df)
+
+    def __getitem__(self, path):
+        """
+        Allows us to act like a dict
+        """
+        return WorldNameCache.WorldName(*self.mapping[path])
+
+    def __contains__(self, path):
+        """
+        A bit more allowing us to act like a dict
+        """
+        return path in self.mapping
 
 class Config(object):
     """
@@ -64,6 +133,8 @@ class Config(object):
 
         self.config_dir = appdirs.user_config_dir('pystarboundmap', 'Apocalyptech')
         self.config_file = os.path.join(self.config_dir, 'pystarboundmap.conf')
+        self.worldname_cache_file = os.path.join(self.config_dir, 'worldname_cache.json')
+        self.worldname_cache = None
 
         self.load()
 
@@ -273,3 +344,10 @@ class Config(object):
                 return dirname
         return None
 
+    def get_worldname_cache(self):
+        """
+        Returns (and possibly creates) our world name cache
+        """
+        if not self.worldname_cache:
+            self.worldname_cache = WorldNameCache(self.worldname_cache_file)
+        return self.worldname_cache

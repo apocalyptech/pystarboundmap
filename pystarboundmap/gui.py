@@ -761,7 +761,7 @@ class OpenByPlanetName(QtWidgets.QDialog):
 
         # Initial view: players
         idx = -1
-        for idx, (_, world_name, filename, extra_text) in enumerate(sorted(player.get_worlds(parent.mainwindow.data))):
+        for idx, (_, world_name, extra_text, filename) in enumerate(sorted(player.get_worlds(parent.mainwindow.data))):
             self.grid.addWidget(PlanetNameButton(self, world_name, filename, extra_text), idx, 0)
         self.grid.addWidget(QtWidgets.QLabel(''), idx+1, 0)
         self.grid.setRowStretch(idx+1, 1)
@@ -1146,7 +1146,7 @@ class GUI(QtWidgets.QMainWindow):
 
             # Actually load the data
             self.data = StarboundData(
-                    self.config.starbound_data_dir,
+                    self.config,
                     progress_callback=self.load_data_progress_callback,
                     )
             self.scene.data = self.data
