@@ -1230,7 +1230,7 @@ class GUI(QtWidgets.QMainWindow):
         if self.world:
             self.loaded_filename = filename
             self.set_title()
-            self.data_table.set_world_filename(filename)
+            self.data_table.set_world_filename(os.path.basename(filename))
             # We're duplicating some work from Player.get_worlds() here, but
             # consolidating everything would be tricky, and in the end I
             # figured it wouldn't be worth it.
