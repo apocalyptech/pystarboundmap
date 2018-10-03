@@ -442,6 +442,7 @@ class Player(object):
                 'aaaaa',
                 'Starship',
                 ship_path,
+                'Your Starship',
                 ))
             worlddf.close()
 
@@ -455,15 +456,12 @@ class Player(object):
                     if planet['planet'] in world_dict[base_system_name]:
                         for filename in world_dict[base_system_name][planet['planet']]:
                             (world, worlddf) = StarboundData.open_world(filename)
-                            raw_name = world.metadata['worldTemplate']['celestialParameters']['name']
-                            #print('Found world {}, type {}, size {}x{} - Subtypes:'.format(
-                            #    world_name,
-                            #    cp['parameters']['worldType'],
-                            #    world.width,
-                            #    world.height,
-                            #    ))
-                            #for subtype in cp['parameters']['terrestrialType']:
-                            #    print(' * {}'.format(subtype))
+                            cp = world.metadata['worldTemplate']['celestialParameters']
+                            raw_name = cp['name']
+                            extra_text = "{}: {}".format(
+                                    cp['parameters']['description'],
+                                    ', '.join(cp['parameters']['terrestrialType']),
+                                    )
 
                             # This is the only way I can find to try and associate a system
                             # to its name (only really useful in the uuid checks below).  Alas!
@@ -474,6 +472,7 @@ class Player(object):
                                 StarboundData.world_name_to_sortable(raw_name),
                                 strip_colors(raw_name),
                                 filename,
+                                extra_text,
                                 ))
                             worlddf.close()
 
@@ -486,7 +485,7 @@ class Player(object):
                         (world, worlddf) = StarboundData.open_world(filename)
                         sort_name = '{} 99 - {}'.format(detected_system_name, description).lower()
                         full_name = '{} - {}'.format(detected_system_name, description)
-                        worlds.append((sort_name, full_name, filename))
+                        worlds.append((sort_name, full_name, filename, 'Non-Planet System Object'))
                         worlddf.close()
 
         # Return our list

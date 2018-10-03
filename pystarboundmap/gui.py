@@ -693,12 +693,15 @@ class PlanetNameButton(QtWidgets.QPushButton):
     Ridiculous little class, but it lets us know which button was clicked, easily.
     """
 
-    def __init__(self, parent, world_name, filename):
+    def __init__(self, parent, world_name, filename, extra_text):
         super().__init__(parent)
         self.parent = parent
         self.world_name = world_name
         self.filename = filename
-        self.setText(world_name)
+        if extra_text and extra_text != '':
+            self.setText("{}\n{}".format(world_name, extra_text))
+        else:
+            self.setText(world_name)
         self.clicked.connect(self.planet_clicked)
 
     def planet_clicked(self):
@@ -758,8 +761,8 @@ class OpenByPlanetName(QtWidgets.QDialog):
 
         # Initial view: players
         idx = -1
-        for idx, (_, world_name, filename) in enumerate(sorted(player.get_worlds(parent.mainwindow.data))):
-            self.grid.addWidget(PlanetNameButton(self, world_name, filename), idx, 0)
+        for idx, (_, world_name, filename, extra_text) in enumerate(sorted(player.get_worlds(parent.mainwindow.data))):
+            self.grid.addWidget(PlanetNameButton(self, world_name, filename, extra_text), idx, 0)
         self.grid.addWidget(QtWidgets.QLabel(''), idx+1, 0)
         self.grid.setRowStretch(idx+1, 1)
 
