@@ -1248,7 +1248,10 @@ class GUI(QtWidgets.QMainWindow):
                 cp = self.world.metadata['worldTemplate']['celestialParameters']
                 self.data_table.set_world_name(StarboundData.strip_colors(cp['name']))
                 self.data_table.set_world_type(cp['parameters']['description'])
-                self.data_table.set_world_extra(', '.join(cp['parameters']['terrestrialType']))
+                if 'terrestrialType' in cp['parameters']:
+                    self.data_table.set_world_extra(', '.join(cp['parameters']['terrestrialType']))
+                else:
+                    self.data_table.set_world_extra('')
             else:
                 self.data_table.set_world_name(os.path.basename(filename))
                 self.data_table.set_world_type('Unknown')
