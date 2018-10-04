@@ -83,7 +83,10 @@ class WorldNameCache(object):
         `world_type` and `biome_types`.  `sort_name` is the key the GUI will use
         to sort, when sorting alphabetically.
         """
-        self.mapping[path] = (sort_name, world_name, '{}: {}'.format(world_type, biome_types))
+        if biome_types:
+            self.mapping[path] = (sort_name, world_name, '{}: {}'.format(world_type, biome_types))
+        else:
+            self.mapping[path] = (sort_name, world_name, world_type)
         self.changed = True
 
     def register_other(self, path, world_name, extra_desc, sort_name):

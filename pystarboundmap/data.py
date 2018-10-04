@@ -456,10 +456,14 @@ class Player(object):
                                 (world, worlddf) = StarboundData.open_world(filename)
                                 cp = world.metadata['worldTemplate']['celestialParameters']
                                 raw_name = cp['name']
+                                if 'terrestrialType' in cp['parameters']:
+                                    biome_types = ', '.join(cp['parameters']['terrestrialType'])
+                                else:
+                                    biome_types = None
                                 cache.register_planet(filename,
                                         world_name=StarboundData.strip_colors(raw_name),
                                         world_type=cp['parameters']['description'],
-                                        biome_types=', '.join(cp['parameters']['terrestrialType']),
+                                        biome_types=biome_types,
                                         sort_name=StarboundData.world_name_to_sortable(raw_name))
                                 worlddf.close()
 
