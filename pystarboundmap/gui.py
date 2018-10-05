@@ -591,6 +591,7 @@ class DataTable(QtWidgets.QWidget):
         self.world_type_label = self.add_row('World Type')
         self.world_extra_label = self.add_row('Extra Info')
         self.world_filename_label = self.add_row('Filename', selectable=True)
+        self.world_size_label = self.add_row('Size')
 
         self.region_label = self.add_row('Region', selectable=True)
         self.tile_label = self.add_row('Coords', selectable=True)
@@ -633,6 +634,9 @@ class DataTable(QtWidgets.QWidget):
 
     def set_world_filename(self, world_filename):
         self.world_filename_label.setText(world_filename)
+
+    def set_world_size(self, width, height):
+        self.world_size_label.setText('{}x{}'.format(width, height))
 
     def set_region(self, rx, ry):
         self.region_label.setText('({}, {})'.format(rx, ry))
@@ -1231,6 +1235,10 @@ class GUI(QtWidgets.QMainWindow):
             self.loaded_filename = filename
             self.set_title()
             self.data_table.set_world_filename(os.path.basename(filename))
+            self.data_table.set_world_size(
+                    self.world.metadata['worldTemplate']['size'][0],
+                    self.world.metadata['worldTemplate']['size'][1],
+                    )
             # We're duplicating some work from Player.get_worlds() here, but
             # consolidating everything would be tricky, and in the end I
             # figured it wouldn't be worth it.
