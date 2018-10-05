@@ -433,7 +433,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.mainwindow.app.processEvents()
 
         # For now, center on the starting region
-        self.center_on(*self.world.metadata['playerStart'])
+        self.center_on_spawn()
 
     def ingame_to_scene(self, x, y):
         """
@@ -453,6 +453,22 @@ class MapScene(QtWidgets.QGraphicsScene):
         # TODO: this y coord may be slightly off
         new_y = ((self.world.height*8) - y)//8
         return (new_x, new_y)
+
+    def centered_tile(self):
+        """
+        Returns the ingame coordinates of the tile we're currently
+        centered on
+        """
+
+        coord_x = int(self.hbar.value() + self.hbar.pageStep()/2)
+        coord_y = int(self.vbar.value() + self.vbar.pageStep()/2)
+        return self.scene_to_ingame(coord_x, coord_y)
+
+    def center_on_spawn(self):
+        """
+        Centers ourself on the spawn point
+        """
+        self.center_on(*self.world.metadata['playerStart'])
 
     def center_on(self, x, y):
         """
@@ -984,6 +1000,80 @@ class SettingsDialog(QtWidgets.QDialog):
         self.maingui.save_config()
         super().close()
 
+class GoToDialog(QtWidgets.QDialog):
+    """
+    Dialog to prompt the user for coordinates to warp to.  I'm tempted to
+    have this support switching between regions and full coords, but in the
+    end that's probably too much work for not enough gain.
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.maingui = parent
+        self.config = parent.config
+
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        self.setWindowTitle('Go To Coordinates')
+        self.setMinimumSize(200, 150)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Title
+        label = QtWidgets.QLabel('<b>Go To Coordinates</b>')
+        layout.addWidget(label, 0, QtCore.Qt.AlignCenter)
+
+        # Contents
+        grid = QtWidgets.QGridLayout()
+        self.world = self.maingui.world
+
+        # Get our current center point
+        (cur_x, cur_y) = self.maingui.scene.centered_tile()
+
+        # X
+        self.label_x = QtWidgets.QLabel('X:')
+        grid.addWidget(self.label_x, 0, 0, QtCore.Qt.AlignRight)
+        self.spin_x = QtWidgets.QSpinBox(self)
+        self.spin_x.setMinimum(0)
+        self.spin_x.setMaximum(self.world.metadata['worldTemplate']['size'][0])
+        self.spin_x.setValue(cur_x)
+        grid.addWidget(self.spin_x, 0, 1)
+
+        # Y
+        self.label_y = QtWidgets.QLabel('Y:')
+        grid.addWidget(self.label_y, 1, 0, QtCore.Qt.AlignRight)
+        self.spin_y = QtWidgets.QSpinBox(self)
+        self.spin_y.setMinimum(0)
+        self.spin_y.setMaximum(self.world.metadata['worldTemplate']['size'][1])
+        self.spin_y.setValue(cur_y)
+        grid.addWidget(self.spin_y, 1, 1)
+
+        # Widget to hold the contents
+        w = QtWidgets.QWidget()
+        w.setLayout(grid)
+        w.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        layout.addWidget(w, 0, QtCore.Qt.AlignCenter)
+
+        # Spacer
+        layout.addWidget(QtWidgets.QLabel(''), 1)
+
+        # Buttons
+        buttonbox = QtWidgets.QDialogButtonBox(self)
+        buttonbox.addButton(QtWidgets.QDialogButtonBox.Ok)
+        buttonbox.addButton(QtWidgets.QDialogButtonBox.Cancel)
+        buttonbox.accepted.connect(self.warp)
+        buttonbox.rejected.connect(self.close)
+        layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
+
+    def warp(self):
+        """
+        User hit OK, let's do this.
+        """
+        self.maingui.scene.center_on(self.spin_x.value(), self.spin_y.value())
+        self.close()
+
 class GUI(QtWidgets.QMainWindow):
     """
     Main application window
@@ -1010,8 +1100,7 @@ class GUI(QtWidgets.QMainWindow):
         if self.config.starbound_data_dir:
             self.load_data()
         else:
-            self.openfile_menu.setEnabled(False)
-            self.openname_menu.setEnabled(False)
+            self.enforce_menu_state()
             msg = QtWidgets.QMessageBox(self)
             msg.setWindowTitle('Starbound Install Dir Not Found')
             msg.setText('<html>Starbound install directory was not found. '
@@ -1045,6 +1134,15 @@ class GUI(QtWidgets.QMainWindow):
         # Edit Menu
         editmenu = menubar.addMenu('&Edit')
         editmenu.addAction('&Settings', self.action_settings, 'Ctrl+S')
+
+        # Nagivate Menu
+        navmenu = menubar.addMenu('&Navigate')
+        self.goto_menu = navmenu.addAction('&Go To...', self.action_goto, 'Ctrl+G')
+        navmenu.addSeparator()
+        self.to_spawn_menu = navmenu.addAction('Go to Spawn Point', self.action_to_spawn)
+
+        # Enforce menu state
+        self.enforce_menu_state()
 
         # Lefthand side vbox
         lh = QtWidgets.QWidget()
@@ -1157,15 +1255,54 @@ class GUI(QtWidgets.QMainWindow):
             if cur_datadir != new_datadir:
                 self.load_data()
                 self.scene.refresh(self.data)
-            self.openfile_menu.setEnabled(True)
-            self.openname_menu.setEnabled(True)
         else:
             self.close_world()
-            self.openfile_menu.setEnabled(False)
-            self.openname_menu.setEnabled(False)
+
+        # Make sure our menus are enabled/disabled as appropriate
+        self.enforce_menu_state()
 
         # Re-focus the main window
         self.activateWindow()
+
+    def action_goto(self):
+        """
+        Will open a dialog prompting the user for coordinates
+        """
+        dialog = GoToDialog(self)
+        dialog.exec()
+
+        # Re-focus the main window
+        self.activateWindow()
+
+    def action_to_spawn(self):
+        """
+        Center the map on the spawn point
+        """
+        self.scene.center_on_spawn()
+
+    def enforce_menu_state(self):
+        """
+        Toggles various menu items to be enabled/disabled depending on the
+        state of the app
+        """
+        if self.config.starbound_data_dir:
+            self.openfile_menu.setEnabled(True)
+            self.openname_menu.setEnabled(True)
+            if self.world:
+                self.goto_menu.setEnabled(True)
+                self.to_spawn_menu.setEnabled(True)
+                self.to_spawn_menu.setText('Go to Spawn Point ({:d}, {:d})'.format(
+                    *map(int, self.world.metadata['playerStart'])))
+            else:
+                self.goto_menu.setEnabled(False)
+                self.to_spawn_menu.setEnabled(False)
+                self.to_spawn_menu.setText('Go to Spawn Point')
+        else:
+            self.openfile_menu.setEnabled(False)
+            self.openname_menu.setEnabled(False)
+            self.goto_menu.setEnabled(False)
+            self.to_spawn_menu.setEnabled(False)
+            self.to_spawn_menu.setText('Go to Spawn Point')
 
     def load_data(self):
         """
@@ -1268,6 +1405,9 @@ class GUI(QtWidgets.QMainWindow):
         else:
             # TODO: Handle this better, too.
             raise Exception('World not found')
+
+        # Update menu state, potentially
+        self.enforce_menu_state()
 
 class Application(QtWidgets.QApplication):
     """

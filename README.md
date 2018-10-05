@@ -17,6 +17,8 @@ Screenshot
 This is pretty much it, at the moment.  You can open new maps by filename,
 or by choosing a character's name followed by a world name.  Click-and-drag
 will move the map around, in addition to your usual scrolling methods.
+The "Navigate" menu (not yet in the screenshot) will let you go to a
+specific coordinate.
 
 The game will attempt to autodetect your Starbound installation directory
 (which is *completely* untested on Windows/Mac), but a settings screen
@@ -31,13 +33,22 @@ TODO
    - (What's a StagehandEntity, I wonder?)
  - Highlight tiles for info
    - Click for full info
- - Go to spawn points, flags, current location, etc
+ - Go to current location (if possible), mech beacons (if possible),
+   bookmarks, etc
  - Zoom
    - Slider
    - `+`/`-` via keyboard
  - Initial open dialog doesn't center on parent window?
  - Minimap
+   - I'll have to see how feasible this is - I'd imagined just a simple
+     little thing to show which regions have data and which don't, with
+     a little box showing the currently-displayed area, but it feels like
+     the game populates more regions than you might expect, and I suspect
+     it wouldn't actually be that useful
  - Search for item types (ores, quest-related things?)
+   - This is something which probably made more sense when the app was
+     attempting to load literally the whole map at once.  Might not be
+     worth it with the current more-limited loaded set.
  - Platforms seem to draw a black area underneath 'em
  - Visualization of explored areas (as defined by light sources)
  - Autodetect game location improvements

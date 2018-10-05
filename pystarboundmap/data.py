@@ -384,6 +384,71 @@ class PakTree(object):
                     ))
         return to_ret
 
+class Bookmark(object):
+    """
+    Class to hold info about a bookmark
+    """
+
+    def __init__(self, bookmark):
+        """
+        `bookmark` should be the dict acquired by looping through the
+        player's "teleportBookmarks"
+        """
+        self.name = bookmark['bookmarkName']
+        target = bookmark['target']
+        list_data = target[0]
+        self.uuid = target[1]
+        parts = list_data.split(':')
+        self.world = False
+        self.filename = None
+        mark_type = parts[0]
+        if mark_type == 'CelestialWorld':
+            if len(parts) < 5:
+                raise Exception('Not sure what to do with bookmark data: {}'.format(list_data))
+            self.world = True
+            self.coords = (parts[1], parts[2], parts[3])
+            self.planet = parts[4]
+            if len(parts) == 6:
+                self.moon = parts[5]
+                self.filename = '{}_{}_{}_{}_{}.world'.format(
+                        *self.coords,
+                        self.planet,
+                        self.moon,
+                        )
+            else:
+                self.moon = None
+                self.filename = '{}_{}_{}_{}.world'.format(
+                        *self.coords,
+                        self.planet,
+                        )
+        elif mark_type == 'ClientShipWorld':
+            # Hardly seems worth it to bookmark your own ship, but it *is*
+            # possible, so we'll support it.
+            self.filename = '{}.shipworld'.format(parts[1])
+        elif mark_type == 'InstanceWorld':
+            if len(parts) < 4:
+                raise Exception('Not sure what to do with bookmark data: {}'.format(list_data))
+            self.inner_desc = parts[1]
+            self.target_uuid = parts[2]
+            self.suffix = parts[3]
+            if self.target_uuid != '-' and self.suffix != '-':
+                # Bookmarks to The Outpost (and perhaps others?) have blank info here,
+                # and we couldn't load them anyway, so just skip 'em
+                # TODO: is it always "unique" as a prefix?
+                self.filename = 'unique-{}-{}-{}.world'.format(
+                        self.inner_desc,
+                        self.target_uuid,
+                        self.suffix,
+                        )
+        else:
+            print('Unknown bookmark type: {}'.format(mark_type))
+
+    def __lt__(self, other):
+        """
+        Makes this object sortable (by bookmark name)
+        """
+        return self.name.lower() < other.name.lower()
+
 class Player(object):
     """
     Wrapper class for the player save dict, to provide a helper function
@@ -395,6 +460,19 @@ class Player(object):
         self.base_universe = base_universe
         self.name = playerdict.data['identity']['name']
 
+        # Load in bookmarks
+        self.bookmarks = {}
+
+        # TODO: Check that the universeMap dicts always has just one key
+        # (a uuid or something)
+        for k, v in self.playerdict.data['universeMap'].items():
+            for bookmark_data in v['teleportBookmarks']:
+                bookmark = Bookmark(bookmark_data)
+                if bookmark.filename:
+                    if bookmark.filename not in self.bookmarks:
+                        self.bookmarks[bookmark.filename] = []
+                    self.bookmarks[bookmark.filename].append(bookmark)
+
     def get_systems(self):
         """
         Returns a list of tuples of the form:
@@ -405,7 +483,7 @@ class Player(object):
         effectively random.)
         """
 
-        # Will have to check that the universeMap dicts always has just one key
+        # TODO: Check that the universeMap dicts always has just one key
         # (a uuid or something)
         for k, v in self.playerdict.data['universeMap'].items():
             # universeMap keys:
