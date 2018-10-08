@@ -791,7 +791,6 @@ class OpenByDialog(QtWidgets.QDialog):
         contents.setLayout(self.grid)
 
         # Populate contents
-        self.grid_widgets = []
         self.buttons = self.generate_buttons()
         self.populate_buttons()
 
@@ -823,11 +822,8 @@ class OpenByDialog(QtWidgets.QDialog):
         Put our buttons in place given the currently-selected sorting
         method.
         """
-        # First, remove anything which currently exists in the grid
-        for w in self.grid_widgets:
-            self.grid.removeWidget(w)
 
-        # Now figure out which index we'll sort on
+        # Figure out which index we'll sort on
         if self.sort_group.checkedButton() == self.button_mtime:
             to_sort = self.sort_mtime_idx
             reverse = True
@@ -835,7 +831,8 @@ class OpenByDialog(QtWidgets.QDialog):
             to_sort = self.sort_alpha_idx
             reverse = False
 
-        # Now add things back in
+        # Now add things.  This'll automatically shuffle stuff around without
+        # us having to worry about removing things first.
         for row, (_, _, button) in enumerate(
                 sorted(self.buttons, reverse=reverse, key=lambda i: i[to_sort])
                 ):
