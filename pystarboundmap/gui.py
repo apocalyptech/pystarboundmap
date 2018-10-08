@@ -50,6 +50,119 @@ class Constants(object):
         z_overlay,
         ) = range(9)
 
+class HTMLStyle(QtWidgets.QProxyStyle):
+    """
+    A QProxyStyle which can be used to render HTML/Rich text inside
+    QComboBoxes, QCheckBoxes and QRadioButtons.  Note that for QComboBox,
+    this does NOT alter rendering of the items when you're choosing from
+    the list.  For that you'll need to set an item delegate.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.text_doc = QtGui.QTextDocument()
+
+    def drawItemText(self, painter, rect, alignment, pal, enabled, text, text_role):
+        """
+        This is what draws the text - we use an internal QTextDocument
+        to do the formatting.  The general form of this function follows the
+        C++ version at https://github.com/qt/qtbase/blob/5.9/src/widgets/styles/qstyle.cpp
+
+        Note that we completely ignore the `alignment` and `enabled` variable.
+        This is always left-aligned, and does not currently support disabled
+        widgets.
+        """
+        if not text or text == '':
+            return
+
+        # Save our current pen if we need to
+        saved_pen = None
+        if text_role != QtGui.QPalette.NoRole:
+            saved_pen = painter.pen()
+            painter.setPen(QtGui.QPen(pal.brush(text_role), saved_pen.widthF()))
+
+        # Render the text.  There's a bit of voodoo here with the rectangles
+        # and painter translation; there was various bits of finagling necessary
+        # to get this to seem to work with both combo boxes and checkboxes.
+        # There's probably better ways to be doing this.
+        margin = 3
+        painter.save()
+        painter.translate(rect.left()-margin, 0)
+        self.text_doc.setHtml(text)
+        self.text_doc.setTextWidth(rect.width())
+        self.text_doc.drawContents(painter,
+                QtCore.QRectF(rect.adjusted(-rect.left(), 0, -margin, 0)))
+        painter.restore()
+
+        # Restore our previous pen if we need to
+        if text_role != QtGui.QPalette.NoRole:
+            painter.setPen(saved_pen)
+
+    def sizeFromContents(self, contents_type, option, size, widget=None):
+        """
+        For ComboBoxes, this gets called to determine the size of the list of
+        options for the comboboxes.  This is too wide for our HTMLComboBox, so
+        we pull in the width from there instead.
+        """
+        width = size.width()
+        height = size.height()
+        if contents_type == self.CT_ComboBox and widget and type(widget) == HTMLComboBox:
+            size = widget.sizeHint()
+            width = size.width() + widget.width_adjust_contents
+        return super().sizeFromContents(contents_type,
+                option,
+                QtCore.QSize(width, height),
+                widget)
+
+class HTMLWidgetHelper(object):
+    """
+    Class to enable HTML/Rich text on a "simple" Qt widget such as QCheckBox
+    or QRadioButton.  The most important bit is setting the widget style to
+    HTMLStyle.  The rest is all just making sure that the widget is sized
+    properly; without it, the widget will be too wide.  If you don't care
+    about that, you can easily just use .setStyle(HTMLStyle()) on a regular
+    widget without bothering with subclassing.
+
+    There's doubtless some corner cases we're missing here, but it works
+    for my purposes.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setStyle(HTMLStyle())
+        self.stored_size = None
+
+    def sizeHint(self):
+        """
+        Use a QTextDocument to compute our rendered text size
+        """
+        if not self.stored_size:
+            doc = QtGui.QTextDocument()
+            doc.setHtml(self.text())
+            size = doc.size()
+            # Details from this derived from QCheckBox/QRadioButton sizeHint sourcecode:
+            # https://github.com/qt/qtbase/blob/5.9/src/widgets/widgets/qcheckbox.cpp
+            # https://github.com/qt/qtbase/blob/5.9/src/widgets/widgets/qradiobutton.cpp
+            opt = QtWidgets.QStyleOptionButton()
+            self.initStyleOption(opt)
+            self.stored_size = QtCore.QSize(
+                    size.width() + opt.iconSize.width() + 4,
+                    max(size.height(), opt.iconSize.height()))
+        return self.stored_size
+
+    def minimumSizeHint(self):
+        """
+        Just use the same logic as `sizeHint`
+        """
+        return self.sizeHint()
+
+class HTMLQPushButton(HTMLWidgetHelper, QtWidgets.QPushButton):
+    """
+    An HTML-enabled QPushButton.  All the actual work is done in HTMLWidgetHelper.
+    We're abusing (well, using) Python's multiple inheritance since the same code
+    works well for more than one widget type.
+    """
+
 class GUITile(QtWidgets.QGraphicsRectItem):
     """
     Hoverable area which the user can click on for info, etc.
@@ -852,7 +965,7 @@ class OpenByPlanetName(OpenByDialog):
     Dialog to open a world by planet name, rather than by filename
     """
 
-    class PlanetNameButton(QtWidgets.QPushButton):
+    class PlanetNameButton(HTMLQPushButton):
         """
         Ridiculous little class, but it lets us know which button was clicked, easily.
         """
@@ -863,14 +976,19 @@ class OpenByPlanetName(OpenByDialog):
             self.world_name = world_name
             self.filename = filename
             if extra_text and extra_text != '':
-                extra_display = "\n{}".format(extra_text)
+                extra_display = '<br/>{}'.format(extra_text)
             else:
                 extra_display = ''
             if os.path.basename(filename) in self.parent.player.bookmarks:
-                bookmark_extra = ' (bookmarked)'
+                bookmark_extra = ' <i>(bookmarked)</i>'
             else:
                 bookmark_extra = ''
-            self.setText("{}{}{}\n{}".format(world_name, bookmark_extra, extra_display, parent.human_date(mtime)))
+            self.setText('<div align="center"><b>{}</b>{}{}<br/><i>{}</i></div>'.format(
+                world_name,
+                bookmark_extra,
+                extra_display,
+                parent.human_date(mtime),
+                ))
             self.clicked.connect(self.planet_clicked)
 
         def planet_clicked(self):
@@ -905,7 +1023,7 @@ class OpenByPlayerName(OpenByDialog):
     Dialog to open a world by player name, rather than by filename
     """
 
-    class PlayerNameButton(QtWidgets.QPushButton):
+    class PlayerNameButton(HTMLQPushButton):
         """
         Ridiculous little class, but it lets us know which button was clicked, easily.
         """
@@ -914,9 +1032,10 @@ class OpenByPlayerName(OpenByDialog):
             super().__init__(parent)
             self.parent = parent
             self.player = player
-            # TODO: meh, as usual, getting HTML/rich text inside a Qt widget is hard.
-            # Would like to Bold the name here, but I don't think it's worth it.
-            self.setText("{}\n{}".format(player.name, parent.human_date(mtime)))
+            self.setText('<div align="center"><b>{}</b><br/><i>{}</i></div>'.format(
+                player.name,
+                parent.human_date(mtime),
+                ))
             self.clicked.connect(self.player_clicked)
 
         def player_clicked(self):
