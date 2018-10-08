@@ -9,6 +9,7 @@ Uses:
  - python-pillow
  - PyQt5
  - appdirs
+ - timeago
  - [py-starbound](https://github.com/blixt/py-starbound) (by blixt)
 
 Screenshot

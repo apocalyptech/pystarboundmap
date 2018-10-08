@@ -31,6 +31,7 @@ import re
 import sys
 import time
 import struct
+import timeago
 import datetime
 from PyQt5 import QtWidgets, QtGui, QtCore
 from .data import StarboundData
@@ -809,6 +810,14 @@ class OpenByDialog(QtWidgets.QDialog):
         buttonbox.rejected.connect(self.reject)
         layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
 
+    def human_date(self, date):
+        """
+        Given a date, return a human-readable string.  Currently using the
+        `timeago` library to provide "<N> hours ago" type strings, rather than
+        a big ol' block of timestamp.
+        """
+        return timeago.format(date)
+
     def generate_buttons(self):
         """
         This is where the buttons get generated.  Should return the index
@@ -853,9 +862,8 @@ class OpenByPlanetName(OpenByDialog):
             self.parent = parent
             self.world_name = world_name
             self.filename = filename
-            human_date = datetime.datetime.fromtimestamp(mtime).strftime('%c')
             if extra_text and extra_text != '':
-                self.setText("{}\n{}\n{}".format(world_name, extra_text, human_date))
+                self.setText("{}\n{}\n{}".format(world_name, extra_text, parent.human_date(mtime)))
             else:
                 self.setText(world_name)
             self.clicked.connect(self.planet_clicked)
@@ -901,10 +909,9 @@ class OpenByPlayerName(OpenByDialog):
             super().__init__(parent)
             self.parent = parent
             self.player = player
-            human_date = datetime.datetime.fromtimestamp(mtime).strftime('%c')
             # TODO: meh, as usual, getting HTML/rich text inside a Qt widget is hard.
             # Would like to Bold the name here, but I don't think it's worth it.
-            self.setText("{}\n{}".format(player.name, human_date))
+            self.setText("{}\n{}".format(player.name, parent.human_date(mtime)))
             self.clicked.connect(self.player_clicked)
 
         def player_clicked(self):
