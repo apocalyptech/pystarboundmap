@@ -32,6 +32,7 @@ import re
 import time
 import json
 import mmap
+import struct
 import starbound
 from PIL import Image
 from PyQt5 import QtGui
@@ -597,6 +598,42 @@ class StarboundData(object):
     base_universe = None
     base_pak = None
 
+    class World(starbound.World):
+        """
+        Overloaded World class to provide some methods I'm not sure really
+        belong in the main py-starbound World class (though we'll see if
+        they get merged in at some point.
+        """
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._uuid_to_region_map = None
+
+        @property
+        def uuid_to_region_map(self):
+            """
+            A dict whose keys are the UUIDs (or just IDs, in some
+            cases) of entities, and whose values are the `(rx, ry)`
+            coordinates in which that entity can be found.
+            """
+            if not self._uuid_to_region_map:
+                self._uuid_to_region_map = {}
+                for key in self.get_all_keys():
+                    (layer, rx, ry) = struct.unpack('>BHH', key)
+                    if layer == 4:
+                        stream = io.BytesIO(self.get(layer, rx, ry))
+                        num_entities = struct.unpack('B', stream.read(1))[0]
+                        for i in range(num_entities):
+                            strlen = struct.unpack('B', stream.read(1))[0]
+                            # TODO: Is utf-8 appropriate?
+                            uuid = stream.read(strlen).decode('utf-8')
+                            if uuid in self._uuid_to_region_map:
+                                # TODO: err?  Should we do this?
+                                raise Exception('UUID {} found in two regions'.format(uuid))
+                            else:
+                                self._uuid_to_region_map[uuid] = (rx, ry)
+            return self._uuid_to_region_map
+
     world_name_sortable_conversions = [
             ('^green;I^white;', '01'),
             ('^green;II^white;', '02'),
@@ -836,7 +873,7 @@ class StarboundData(object):
 
         with open(filename, 'rb') as worlddf:
             worldmm = mmap.mmap(worlddf.fileno(), 0, access=mmap.ACCESS_READ)
-            world = starbound.World(worldmm)
+            world = StarboundData.World(worldmm)
             world.read_metadata()
             return (world, worldmm)
 

@@ -30,6 +30,7 @@ import os
 import re
 import sys
 import time
+import struct
 import datetime
 from PyQt5 import QtWidgets, QtGui, QtCore
 from .data import StarboundData
@@ -837,6 +838,7 @@ class OpenByPlayerName(QtWidgets.QDialog):
         self.setMinimumSize(400, 300)
         self.setWindowTitle('Load Starbound World')
 
+        self.chosen_player = None
         self.chosen_filename = None
 
         # Layout info
@@ -880,6 +882,7 @@ class OpenByPlayerName(QtWidgets.QDialog):
         """
         A player was chosen; get its planets.
         """
+        self.chosen_player = player
         self.setEnabled(False)
         for button in self.buttons:
             button.setEnabled(False)
@@ -1091,6 +1094,7 @@ class GUI(QtWidgets.QMainWindow):
         self.data = None
         self.loaded_filename = None
         self.load_data_dialog = None
+        self.bookmark_actions = []
         self.initUI()
 
         # Show ourselves
@@ -1136,10 +1140,10 @@ class GUI(QtWidgets.QMainWindow):
         editmenu.addAction('&Settings', self.action_settings, 'Ctrl+S')
 
         # Nagivate Menu
-        navmenu = menubar.addMenu('&Navigate')
-        self.goto_menu = navmenu.addAction('&Go To...', self.action_goto, 'Ctrl+G')
-        navmenu.addSeparator()
-        self.to_spawn_menu = navmenu.addAction('Go to Spawn Point', self.action_to_spawn)
+        self.navmenu = menubar.addMenu('&Navigate')
+        self.goto_menu = self.navmenu.addAction('&Go To...', self.action_goto, 'Ctrl+G')
+        self.navmenu.addSeparator()
+        self.to_spawn_menu = self.navmenu.addAction('Go to Spawn Point', self.action_to_spawn)
 
         # Enforce menu state
         self.enforce_menu_state()
@@ -1237,7 +1241,7 @@ class GUI(QtWidgets.QMainWindow):
         dialog = OpenByPlayerName(self)
         dialog.exec()
         if dialog.chosen_filename:
-            self.load_map(dialog.chosen_filename)
+            self.load_map(dialog.chosen_filename, dialog.chosen_player)
 
         # Re-focus the main window
         self.activateWindow()
@@ -1279,6 +1283,12 @@ class GUI(QtWidgets.QMainWindow):
         Center the map on the spawn point
         """
         self.scene.center_on_spawn()
+
+    def action_to_coords(self, x, y):
+        """
+        Center the map on the specified point
+        """
+        self.scene.center_on(x, y)
 
     def enforce_menu_state(self):
         """
@@ -1355,10 +1365,16 @@ class GUI(QtWidgets.QMainWindow):
         if self.worlddf:
             self.worlddf.close()
             self.worlddf = None
+        for action in self.bookmark_actions:
+            self.navmenu.removeAction(action)
+        self.bookmark_actions = []
 
-    def load_map(self, filename):
+    def load_map(self, filename, player=None):
         """
-        Loads the map from `filename`
+        Loads the map from `filename`, optionally having been loaded via
+        player `player`.  (This is to support loading player bookmarks
+        into our Navigation menu, since those are stored in the player
+        files.)
         """
 
         # Close out any old map we have
@@ -1369,9 +1385,10 @@ class GUI(QtWidgets.QMainWindow):
         (self.world, self.worlddf) = StarboundData.open_world(filename)
 
         if self.world:
+            base_filename = os.path.basename(filename)
             self.loaded_filename = filename
             self.set_title()
-            self.data_table.set_world_filename(os.path.basename(filename))
+            self.data_table.set_world_filename(base_filename)
             self.data_table.set_world_size(
                     self.world.metadata['worldTemplate']['size'][0],
                     self.world.metadata['worldTemplate']['size'][1],
@@ -1379,7 +1396,7 @@ class GUI(QtWidgets.QMainWindow):
             # We're duplicating some work from Player.get_worlds() here, but
             # consolidating everything would be tricky, and in the end I
             # figured it wouldn't be worth it.
-            match = re.match(r'(.*)-([0-9a-f]{32})-(\d+).(temp)?world', os.path.basename(filename))
+            match = re.match(r'(.*)-([0-9a-f]{32})-(\d+).(temp)?world', base_filename)
             if match:
                 self.data_table.set_world_name(match.group(1))
                 self.data_table.set_world_type('Non-Planet System Object')
@@ -1398,10 +1415,25 @@ class GUI(QtWidgets.QMainWindow):
                 else:
                     self.data_table.set_world_extra('')
             else:
-                self.data_table.set_world_name(os.path.basename(filename))
+                self.data_table.set_world_name(base_filename)
                 self.data_table.set_world_type('Unknown')
                 self.data_table.set_world_extra('')
             self.scene.load_map(self.world)
+
+            # Update our bookmark menu actions, too
+            if player and base_filename in player.bookmarks:
+                marks = player.bookmarks[base_filename]
+                for mark in sorted(marks):
+                    if mark.uuid in self.world.uuid_to_region_map:
+                        entities = self.world.get_entities(*self.world.uuid_to_region_map[mark.uuid])
+                        for entity in entities:
+                            if ('uniqueId' in entity.data and entity.data['uniqueId'] == mark.uuid):
+                                (ex, ey) = entity.data['tilePosition']
+                                self.bookmark_actions.append(
+                                        self.navmenu.addAction(
+                                            'Go to Bookmark: {} ({}, {})'.format(mark.name, ex, ey),
+                                            lambda: self.action_to_coords(ex, ey),
+                                            ))
         else:
             # TODO: Handle this better, too.
             raise Exception('World not found')
