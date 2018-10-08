@@ -37,7 +37,10 @@ TODO
    - (What's a StagehandEntity, I wonder?)
  - Highlight tiles for info
    - Click for full info
- - Go to current location (if possible)
+ - Go to current location (if possible.  Where the hell is this *stored?*
+   I can't find it for the life of me.  The character *position* is pretty
+   obviously in `movementController.position`, but the world info completely
+   eludes me.  Somewhere inside the `universe.chunks` file, maybe??)
  - Zoom
    - Slider
    - `+`/`-` via keyboard
