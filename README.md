@@ -19,10 +19,11 @@ or by choosing a character's name followed by a world name.  Click-and-drag
 will move the map around, in addition to your usual scrolling methods.
 The "Navigate" menu (not yet in the screenshot) will let you go directly
 to a specific coordinate, the spawn point, the level mech beacon (if one
-exists), or to any bookmarks set by the user.  (Note that you *must* load
-the world using the by-name dialog rather than the by-file "standard" open
-dialog, in order to have bookmarks in the Navigate menu -- that information
-is stored in the Player object.)
+exists), the "current" player location (if this is the map the player is
+currently on), or to any bookmarks set by the user.  (Note that you *must*
+load the world using the by-name dialog rather than the by-file "standard"
+open dialog, in order to have bookmarks an "current location" in the
+Navigate menu -- that information is stored in the Player object.)
 
 The game will attempt to autodetect your Starbound installation directory
 (which is *completely* untested on Windows/Mac), but a settings screen
@@ -37,10 +38,6 @@ TODO
    - (What's a StagehandEntity, I wonder?)
  - Highlight tiles for info
    - Click for full info
- - Go to current location (if possible.  Where the hell is this *stored?*
-   I can't find it for the life of me.  The character *position* is pretty
-   obviously in `movementController.position`, but the world info completely
-   eludes me.  Somewhere inside the `universe.chunks` file, maybe??)
  - Zoom
    - Slider
    - `+`/`-` via keyboard

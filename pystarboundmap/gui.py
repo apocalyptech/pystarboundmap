@@ -1451,6 +1451,16 @@ class GUI(QtWidgets.QMainWindow):
 
             # Update our player-dependent navigation menu actions
             if player:
+
+                # Current Player Location
+                if player.cur_world_filename and player.cur_world_filename == base_filename:
+                    self.navigation_actions.append(
+                            self.navmenu.addAction(
+                                'Go to Player Location ({:d}, {:d})'.format(*map(int, player.cur_world_loc)),
+                                lambda: self.action_to_coords(*player.cur_world_loc),
+                                ))
+
+                # Player Bookmarks
                 if base_filename in player.bookmarks:
                     marks = player.bookmarks[base_filename]
                     for mark in sorted(marks):

@@ -399,50 +399,7 @@ class Bookmark(object):
         target = bookmark['target']
         list_data = target[0]
         self.uuid = target[1]
-        parts = list_data.split(':')
-        self.world = False
-        self.filename = None
-        mark_type = parts[0]
-        if mark_type == 'CelestialWorld':
-            if len(parts) < 5:
-                raise Exception('Not sure what to do with bookmark data: {}'.format(list_data))
-            self.world = True
-            self.coords = (parts[1], parts[2], parts[3])
-            self.planet = parts[4]
-            if len(parts) == 6:
-                self.moon = parts[5]
-                self.filename = '{}_{}_{}_{}_{}.world'.format(
-                        *self.coords,
-                        self.planet,
-                        self.moon,
-                        )
-            else:
-                self.moon = None
-                self.filename = '{}_{}_{}_{}.world'.format(
-                        *self.coords,
-                        self.planet,
-                        )
-        elif mark_type == 'ClientShipWorld':
-            # Hardly seems worth it to bookmark your own ship, but it *is*
-            # possible, so we'll support it.
-            self.filename = '{}.shipworld'.format(parts[1])
-        elif mark_type == 'InstanceWorld':
-            if len(parts) < 4:
-                raise Exception('Not sure what to do with bookmark data: {}'.format(list_data))
-            self.inner_desc = parts[1]
-            self.target_uuid = parts[2]
-            self.suffix = parts[3]
-            if self.target_uuid != '-' and self.suffix != '-':
-                # Bookmarks to The Outpost (and perhaps others?) have blank info here,
-                # and we couldn't load them anyway, so just skip 'em
-                # TODO: is it always "unique" as a prefix?
-                self.filename = 'unique-{}-{}-{}.world'.format(
-                        self.inner_desc,
-                        self.target_uuid,
-                        self.suffix,
-                        )
-        else:
-            print('Unknown bookmark type: {}'.format(mark_type))
+        self.filename = StarboundData.world_string_to_filename(list_data)
 
     def __lt__(self, other):
         """
@@ -461,6 +418,19 @@ class Player(object):
         self.base_universe = base_universe
         self.name = playerdict.data['identity']['name']
         self.uuid = playerdict.data['uuid']
+
+        # Figure out our current location
+        self.cur_world_filename = None
+        self.cur_world_loc = None
+        context_path = os.path.join(base_universe, '{}.clientcontext'.format(self.uuid))
+        if os.path.exists(context_path):
+            with open(context_path, 'rb') as df:
+                context = starbound.read_sbvj01(df)
+                if 'reviveWarp' in context.data:
+                    self.cur_world_filename = StarboundData.world_string_to_filename(
+                            context.data['reviveWarp']['world'])
+                    if self.cur_world_filename:
+                        self.cur_world_loc = tuple(context.data['reviveWarp']['target'])
 
         # Load in bookmarks
         self.bookmarks = {}
@@ -896,3 +866,55 @@ class StarboundData(object):
         Strips color information from a string
         """
         return re.sub('\^\w+?;', '', input_string)
+
+    @staticmethod
+    def world_string_to_filename(world_desc):
+        """
+        Converts a world description string (colon-delimited, starting with
+        CelestialWorld, ClientShipWorld, or InstanceWorld) into a filename.
+        Note that this does *not* return the data directory as well -- if
+        you intend to open a file with this (as opposed to just checking
+        filenames), be sure to check for `shipworld` in the file name, to
+        know to load from the `player` dir instead of `universe`.
+        """
+        parts = world_desc.split(':')
+        world_type = parts[0]
+        if world_type == 'CelestialWorld':
+            if len(parts) < 5:
+                raise Exception('Not sure what to do with world string: {}'.format(world_desc))
+            coords = (parts[1], parts[2], parts[3])
+            planet = parts[4]
+            if len(parts) == 6:
+                moon = parts[5]
+                return '{}_{}_{}_{}_{}.world'.format(
+                        *coords,
+                        planet,
+                        moon,
+                        )
+            else:
+                return '{}_{}_{}_{}.world'.format(
+                        *coords,
+                        planet,
+                        )
+        elif world_type == 'ClientShipWorld':
+            # Hardly seems worth it to bookmark your own ship, but it *is*
+            # possible, so we'll support it.
+            return '{}.shipworld'.format(parts[1])
+        elif world_type == 'InstanceWorld':
+            if len(parts) < 4:
+                raise Exception('Not sure what to do with world_string: {}'.format(world_desc))
+            inner_desc = parts[1]
+            target_uuid = parts[2]
+            suffix = parts[3]
+            if target_uuid != '-' and suffix != '-':
+                # Bookmarks to The Outpost (and perhaps others?) have blank info here,
+                # and we couldn't load them anyway, so just skip 'em
+                # TODO: is it always "unique" as a prefix?
+                return 'unique-{}-{}-{}.world'.format(
+                        inner_desc,
+                        target_uuid,
+                        suffix,
+                        )
+        else:
+            print('Unknown world type: {}'.format(world_type))
+        return None
