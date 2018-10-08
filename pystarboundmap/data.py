@@ -541,6 +541,8 @@ class Player(object):
                     if uuid in extra_uuid:
                         (filename, description) = extra_uuid[uuid]
                         if filename not in cache:
+                            if description.startswith('unique-'):
+                                description = description[7:]
                             cache.register_other(filename,
                                     world_name='{} - {}'.format(detected_system_name, description),
                                     extra_desc='Non-Planet System Object',

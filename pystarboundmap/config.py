@@ -57,7 +57,7 @@ class WorldNameCache(object):
     dialog is open.
     """
 
-    cache_ver = 1
+    cache_ver = 2
     WorldName = namedtuple('WorldName', [
         'sort_name',
         'world_name',
