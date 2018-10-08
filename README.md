@@ -12,25 +12,50 @@ Uses:
  - timeago
  - [py-starbound](https://github.com/blixt/py-starbound) (by blixt)
 
-Screenshot
-----------
+Installation
+------------
 
-This is pretty much it, at the moment.  You can open new maps by filename,
-or by choosing a character's name followed by a world name.  Click-and-drag
-will move the map around, in addition to your usual scrolling methods.
-The "Navigate" menu (not yet in the screenshot) will let you go directly
-to a specific coordinate, the spawn point, the level mech beacon (if one
-exists), the "current" player location (if this is the map the player is
-currently on), or to any bookmarks set by the user.  (Note that you *must*
-load the world using the by-name dialog rather than the by-file "standard"
-open dialog, in order to have bookmarks an "current location" in the
-Navigate menu -- that information is stored in the Player object.)
+This section's forthcoming -- I'll eventually have this packaged up
+properly so that it can be installed via `pip`, and ideally have some
+prebundled Windows EXEs, etc.  For now, just make sure you've got a
+Python 3 environment with the above libraries installed, and run it
+right from the git checkout.
+
+Usage
+-----
 
 The game will attempt to autodetect your Starbound installation directory
-(which is *completely* untested on Windows/Mac), but a settings screen
-exists for you to manually choose it.
+(which is *completely* untested on Windows/Mac).  If the install directory
+can't be found, the app will prompt you to choose it manually (and this
+can be changed later via the `Edit -> Settings` menu.
 
-[![pystarboundmap screenshot](screenshot.png)](screenshot.png)
+The default "Open" dialog will let you choose a world to open first by
+player name, and then by the world name.  You can get a more standard
+file-opening dialog with `Ctrl-Shift-O`, but this dialog should be much
+friendlier:
+
+[![Open By Name](screenshots/open_by_world.png)](screnshots/open_by_world.png)
+
+The map will start out centered on the level spawn point, though if the
+level contains a mech beacon, it will be centered there instead (since
+generally the spawn points of levels with mech beacons don't actually
+have anything around the spawn point).  Once on the main screen, there's
+not a lot to do except scroll around using scrollbars or by dragging the map:
+
+[![Main Window](screenshots/mainwindow.png)](screenshots/mainwindow.png)
+
+The information about the currently-hovered tile will be shown on the lefthand
+side of the screen, which can be resized by dragging on the edge.
+
+The "Navigate" menu will let you go directly to a specific coordinate, the
+spawn point, the level mech beacon (if one exists), the "current" player
+location (if this is the map the player is currently on), or to any bookmarks
+set by the user.  Note that you *must* load the world using the by-name
+dialog rather than the by-file open dialog, in order to have bookmarks
+and/or current location in the Navigate menu -- that information is stored
+in the Player object.
+
+[![Navigate Menu](screenshots/navigate.png)](screenshots/navigate.png)
 
 TODO
 ----
@@ -42,7 +67,7 @@ TODO
  - Zoom
    - Slider
    - `+`/`-` via keyboard
- - Initial open dialog doesn't center on parent window?
+ - Initial resource load / open dialogs don't center on parent window
  - Minimap
    - I'll have to see how feasible this is - I'd imagined just a simple
      little thing to show which regions have data and which don't, with
