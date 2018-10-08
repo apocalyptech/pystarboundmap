@@ -857,12 +857,12 @@ class OpenByDialog(QtWidgets.QDialog):
     Base dialog for both of our open-by-name dialogs
     """
 
-    def __init__(self, parent, main_label):
+    def __init__(self, parent, main_label, height=350):
         super().__init__(parent)
         self.setModal(True)
         self.setSizeGripEnabled(True)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setMinimumSize(400, 350)
+        self.setMinimumSize(400, height)
         self.setWindowTitle('Load Starbound World')
 
         self.sort_mtime_idx = 0
@@ -999,7 +999,7 @@ class OpenByPlanetName(OpenByDialog):
         self.player = player
         self.parent_dialog = parent
         self.chosen_filename = None
-        super().__init__(parent, 'Open Starbound World for {}'.format(player.name))
+        super().__init__(parent, 'Open Starbound World for {}'.format(player.name), height=500)
 
     def generate_buttons(self):
         """
