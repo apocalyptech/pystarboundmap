@@ -433,8 +433,17 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Get all pending app events out of the way
         self.mainwindow.app.processEvents()
 
-        # For now, center on the starting region
-        self.center_on_spawn()
+        # If there's a mech beacon in the map, center there (there will often
+        # be just black space visible, otherwise) - otherwise center on the
+        # spawn point
+        if 'mechbeacon' in self.world.uuid_to_region_map:
+            coords = self.world.get_uuid_coords('mechbeacon')
+            if coords:
+                self.center_on(*coords)
+            else:
+                self.center_on_spawn()
+        else:
+            self.center_on_spawn()
 
     def ingame_to_scene(self, x, y):
         """
@@ -1094,7 +1103,7 @@ class GUI(QtWidgets.QMainWindow):
         self.data = None
         self.loaded_filename = None
         self.load_data_dialog = None
-        self.bookmark_actions = []
+        self.navigation_actions = []
         self.initUI()
 
         # Show ourselves
@@ -1365,9 +1374,25 @@ class GUI(QtWidgets.QMainWindow):
         if self.worlddf:
             self.worlddf.close()
             self.worlddf = None
-        for action in self.bookmark_actions:
+        for action in self.navigation_actions:
             self.navmenu.removeAction(action)
-        self.bookmark_actions = []
+        self.navigation_actions = []
+
+    def add_navigation_item(self, uuid, text):
+        """
+        Adds an item to our navigation menut, based on the given `uuid` (or just
+        ID, in some cases), and with the label `text`.  Returns the action, if
+        created, or None.
+        """
+        coords = self.world.get_uuid_coords(uuid)
+        if coords:
+            self.navigation_actions.append(
+                    self.navmenu.addAction(
+                        '{} ({}, {})'.format(text, coords[0], coords[1]),
+                        lambda: self.action_to_coords(coords[0], coords[1]),
+                        ))
+            return self.navigation_actions[-1]
+        return None
 
     def load_map(self, filename, player=None):
         """
@@ -1420,20 +1445,16 @@ class GUI(QtWidgets.QMainWindow):
                 self.data_table.set_world_extra('')
             self.scene.load_map(self.world)
 
-            # Update our bookmark menu actions, too
-            if player and base_filename in player.bookmarks:
-                marks = player.bookmarks[base_filename]
-                for mark in sorted(marks):
-                    if mark.uuid in self.world.uuid_to_region_map:
-                        entities = self.world.get_entities(*self.world.uuid_to_region_map[mark.uuid])
-                        for entity in entities:
-                            if ('uniqueId' in entity.data and entity.data['uniqueId'] == mark.uuid):
-                                (ex, ey) = entity.data['tilePosition']
-                                self.bookmark_actions.append(
-                                        self.navmenu.addAction(
-                                            'Go to Bookmark: {} ({}, {})'.format(mark.name, ex, ey),
-                                            lambda: self.action_to_coords(ex, ey),
-                                            ))
+            # Jump to a Mech Beacon, if we have it
+            if 'mechbeacon' in self.world.uuid_to_region_map:
+                self.add_navigation_item('mechbeacon', 'Go to Mech Beacon')
+
+            # Update our player-dependent navigation menu actions
+            if player:
+                if base_filename in player.bookmarks:
+                    marks = player.bookmarks[base_filename]
+                    for mark in sorted(marks):
+                        self.add_navigation_item(mark.uuid, 'Go to Bookmark: {}'.format(mark.name))
         else:
             # TODO: Handle this better, too.
             raise Exception('World not found')

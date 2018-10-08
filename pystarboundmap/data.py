@@ -460,6 +460,7 @@ class Player(object):
         self.playerdict = playerdict
         self.base_universe = base_universe
         self.name = playerdict.data['identity']['name']
+        self.uuid = playerdict.data['uuid']
 
         # Load in bookmarks
         self.bookmarks = {}
@@ -633,6 +634,18 @@ class StarboundData(object):
                             else:
                                 self._uuid_to_region_map[uuid] = (rx, ry)
             return self._uuid_to_region_map
+
+        def get_uuid_coords(self, uuid):
+            """
+            Returns the coordinates of the given UUID inside this map, or
+            `None` if the UUID is not found.
+            """
+            if uuid in self.uuid_to_region_map:
+                entities = self.get_entities(*self.uuid_to_region_map[uuid])
+                for entity in entities:
+                    if ('uniqueId' in entity.data and entity.data['uniqueId'] == uuid):
+                        return tuple(entity.data['tilePosition'])
+            return None
 
     world_name_sortable_conversions = [
             ('^green;I^white;', '01'),

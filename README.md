@@ -18,10 +18,11 @@ This is pretty much it, at the moment.  You can open new maps by filename,
 or by choosing a character's name followed by a world name.  Click-and-drag
 will move the map around, in addition to your usual scrolling methods.
 The "Navigate" menu (not yet in the screenshot) will let you go directly
-to a specific coordinate, the spawn point, or to any bookmarks set by the
-user.  (Note that you *must* load the world using the by-name dialog rather
-than the by-file "standard" open dialog, in order to have bookmarks in
-the Navigate menu -- that information is stored in the Player object.)
+to a specific coordinate, the spawn point, the level mech beacon (if one
+exists), or to any bookmarks set by the user.  (Note that you *must* load
+the world using the by-name dialog rather than the by-file "standard" open
+dialog, in order to have bookmarks in the Navigate menu -- that information
+is stored in the Player object.)
 
 The game will attempt to autodetect your Starbound installation directory
 (which is *completely* untested on Windows/Mac), but a settings screen
@@ -36,7 +37,7 @@ TODO
    - (What's a StagehandEntity, I wonder?)
  - Highlight tiles for info
    - Click for full info
- - Go to current location (if possible), mech beacons (if possible)
+ - Go to current location (if possible)
  - Zoom
    - Slider
    - `+`/`-` via keyboard
