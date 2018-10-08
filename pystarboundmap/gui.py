@@ -863,9 +863,14 @@ class OpenByPlanetName(OpenByDialog):
             self.world_name = world_name
             self.filename = filename
             if extra_text and extra_text != '':
-                self.setText("{}\n{}\n{}".format(world_name, extra_text, parent.human_date(mtime)))
+                extra_display = "\n{}".format(extra_text)
             else:
-                self.setText(world_name)
+                extra_display = ''
+            if os.path.basename(filename) in self.parent.player.bookmarks:
+                bookmark_extra = ' (bookmarked)'
+            else:
+                bookmark_extra = ''
+            self.setText("{}{}{}\n{}".format(world_name, bookmark_extra, extra_display, parent.human_date(mtime)))
             self.clicked.connect(self.planet_clicked)
 
         def planet_clicked(self):
