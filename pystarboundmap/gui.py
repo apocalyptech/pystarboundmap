@@ -1182,8 +1182,8 @@ class GUI(QtWidgets.QMainWindow):
         # File Menu
         menubar = self.menuBar()
         filemenu = menubar.addMenu('&File')
-        self.openfile_menu = filemenu.addAction('&Open File', self.action_open_file, 'Ctrl+O')
-        self.openname_menu = filemenu.addAction('Open by &Name', self.action_open_name, 'Ctrl+N')
+        self.openname_menu = filemenu.addAction('&Open by Name', self.action_open_name, 'Ctrl+O')
+        self.openfile_menu = filemenu.addAction('Open &File', self.action_open_file, 'Ctrl+Shift+O')
         filemenu.addSeparator()
         filemenu.addAction('&Quit', self.action_quit, 'Ctrl+Q')
 
