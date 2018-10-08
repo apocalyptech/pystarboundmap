@@ -27,7 +27,7 @@ Usage
 The game will attempt to autodetect your Starbound installation directory
 (which is *completely* untested on Windows/Mac).  If the install directory
 can't be found, the app will prompt you to choose it manually (and this
-can be changed later via the `Edit -> Settings` menu.
+can be changed later via the `Edit -> Settings` menu).
 
 The default "Open" dialog will let you choose a world to open first by
 player name, and then by the world name.  You can get a more standard
