@@ -469,7 +469,7 @@ class Player(object):
         """
         Given a StarboundData object `data`, returns a list of all worlds
         known to the user, as a list of tuples of the form:
-            (sortable_name, world_name, filename)
+            (mtime, sortable_name, world_name, filename)
         
         Note that this has to actually load in world files to get the names
         on the first runthrough, but we *do* now cache the name information,
@@ -488,6 +488,7 @@ class Player(object):
             if ship_path not in cache:
                 cache.register_other(ship_path, 'Starship', 'Your Starship', 'aaaaa')
             worlds.append((
+                os.path.getmtime(ship_path),
                 cache[ship_path].sort_name,
                 cache[ship_path].world_name,
                 cache[ship_path].extra_desc,
@@ -526,6 +527,7 @@ class Player(object):
                                         cache[filename].world_name)
 
                             worlds.append((
+                                os.path.getmtime(filename),
                                 cache[filename].sort_name,
                                 cache[filename].world_name,
                                 cache[filename].extra_desc,
@@ -545,6 +547,7 @@ class Player(object):
                                     sort_name='{} 99 - {}'.format(detected_system_name, description).lower(),
                                     )
                         worlds.append((
+                            os.path.getmtime(filename),
                             cache[filename].sort_name,
                             cache[filename].world_name,
                             cache[filename].extra_desc,

@@ -748,8 +748,11 @@ class OpenByDialog(QtWidgets.QDialog):
         self.setModal(True)
         self.setSizeGripEnabled(True)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setMinimumSize(400, 300)
+        self.setMinimumSize(400, 350)
         self.setWindowTitle('Load Starbound World')
+
+        self.sort_mtime_idx = 0
+        self.sort_alpha_idx = 1
 
         # Layout info
         layout = QtWidgets.QVBoxLayout()
@@ -759,6 +762,24 @@ class OpenByDialog(QtWidgets.QDialog):
         title_label = QtWidgets.QLabel(main_label, self)
         title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
         layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+
+        # Box to hold sorting buttons
+        w = QtWidgets.QWidget()
+        hbox = QtWidgets.QHBoxLayout()
+        w.setLayout(hbox)
+        self.button_mtime = QtWidgets.QPushButton('Sort: new -> old', self)
+        self.button_mtime.setCheckable(True)
+        self.button_mtime.setChecked(True)
+        hbox.addWidget(self.button_mtime)
+        self.button_alpha = QtWidgets.QPushButton('Sort: A -> Z', self)
+        self.button_alpha.setCheckable(True)
+        self.button_alpha.setChecked(False)
+        hbox.addWidget(self.button_alpha)
+        self.sort_group = QtWidgets.QButtonGroup(self)
+        self.sort_group.addButton(self.button_mtime)
+        self.sort_group.addButton(self.button_alpha)
+        self.sort_group.buttonClicked.connect(self.populate_buttons)
+        layout.addWidget(w)
 
         # Scrolled Area
         self.scroll = QtWidgets.QScrollArea(self)
@@ -770,9 +791,14 @@ class OpenByDialog(QtWidgets.QDialog):
         contents.setLayout(self.grid)
 
         # Populate contents
-        last_row = self.populate_contents()
-        self.grid.addWidget(QtWidgets.QLabel(''), last_row+1, 0)
-        self.grid.setRowStretch(last_row+1, 1)
+        self.grid_widgets = []
+        self.buttons = self.generate_buttons()
+        self.populate_buttons()
+
+        # Spacer at the end of the grid (this won't ever get removed, even
+        # during re-sorts)
+        self.grid.addWidget(QtWidgets.QLabel(''), len(self.buttons), 0)
+        self.grid.setRowStretch(len(self.buttons), 1)
 
         # Add our contents to the scroll widget
         layout.addWidget(self.scroll, 1)
@@ -784,11 +810,36 @@ class OpenByDialog(QtWidgets.QDialog):
         buttonbox.rejected.connect(self.reject)
         layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
 
-    def populate_contents(self):
+    def generate_buttons(self):
         """
-        This is where the buttons get generated
+        This is where the buttons get generated.  Should return the index
+        of the last row added so that we can then add an extra row to
+        stretch.
         """
         raise Exception('Implement me!')
+
+    def populate_buttons(self):
+        """
+        Put our buttons in place given the currently-selected sorting
+        method.
+        """
+        # First, remove anything which currently exists in the grid
+        for w in self.grid_widgets:
+            self.grid.removeWidget(w)
+
+        # Now figure out which index we'll sort on
+        if self.sort_group.checkedButton() == self.button_mtime:
+            to_sort = self.sort_mtime_idx
+            reverse = True
+        else:
+            to_sort = self.sort_alpha_idx
+            reverse = False
+
+        # Now add things back in
+        for row, (_, _, button) in enumerate(
+                sorted(self.buttons, reverse=reverse, key=lambda i: i[to_sort])
+                ):
+            self.grid.addWidget(button, row, 0)
 
 class OpenByPlanetName(OpenByDialog):
     """
@@ -800,13 +851,14 @@ class OpenByPlanetName(OpenByDialog):
         Ridiculous little class, but it lets us know which button was clicked, easily.
         """
 
-        def __init__(self, parent, world_name, filename, extra_text):
+        def __init__(self, parent, world_name, filename, mtime, extra_text):
             super().__init__(parent)
             self.parent = parent
             self.world_name = world_name
             self.filename = filename
+            human_date = datetime.datetime.fromtimestamp(mtime).strftime('%c')
             if extra_text and extra_text != '':
-                self.setText("{}\n{}".format(world_name, extra_text))
+                self.setText("{}\n{}\n{}".format(world_name, extra_text, human_date))
             else:
                 self.setText(world_name)
             self.clicked.connect(self.planet_clicked)
@@ -821,16 +873,15 @@ class OpenByPlanetName(OpenByDialog):
         self.chosen_filename = None
         super().__init__(parent, 'Open Starbound World for {}'.format(player.name))
 
-    def populate_contents(self):
+    def generate_buttons(self):
         """
         This is where the buttons get generated
         """
-        idx = -1
-        for idx, (_, world_name, extra_text, filename) in enumerate(
-                sorted(self.player.get_worlds(self.parent_dialog.mainwindow.data))
-                ):
-            self.grid.addWidget(OpenByPlanetName.PlanetNameButton(self, world_name, filename, extra_text), idx, 0)
-        return idx
+        buttons = []
+        for (mtime, sort_name, world_name, extra_text, filename) in self.player.get_worlds(self.parent_dialog.mainwindow.data):
+            button = OpenByPlanetName.PlanetNameButton(self, world_name, filename, mtime, extra_text)
+            buttons.append((mtime, sort_name, button))
+        return buttons
 
     def planet_clicked(self, filename):
         """
@@ -869,17 +920,15 @@ class OpenByPlayerName(OpenByDialog):
         self.chosen_filename = None
         super().__init__(parent, 'Open Starbound World')
 
-    def populate_contents(self):
+    def generate_buttons(self):
         """
         This is where the buttons get generated
         """
-        idx = -1
-        self.buttons = []
-        for idx, (mtime, player) in enumerate(self.mainwindow.data.get_all_players()):
+        buttons = []
+        for mtime, player in self.mainwindow.data.get_all_players():
             button = OpenByPlayerName.PlayerNameButton(self, player, mtime)
-            self.buttons.append(button)
-            self.grid.addWidget(button, idx, 0)
-        return idx
+            buttons.append((mtime, player.name.lower(), button))
+        return buttons
 
     def player_clicked(self, player):
         """
@@ -887,12 +936,12 @@ class OpenByPlayerName(OpenByDialog):
         """
         self.chosen_player = player
         self.setEnabled(False)
-        for button in self.buttons:
+        for (_, _, button) in self.buttons:
             button.setEnabled(False)
         dialog = OpenByPlanetName(self, player)
         dialog.exec()
         self.setEnabled(True)
-        for button in self.buttons:
+        for (_, _, button) in self.buttons:
             button.setEnabled(True)
 
     def planet_clicked(self, filename):
