@@ -738,69 +738,29 @@ class RegionLoadingNotifier(QtWidgets.QWidget):
         self.text_label.hide()
         self.bar.hide()
 
-class PlanetNameButton(QtWidgets.QPushButton):
+class OpenByDialog(QtWidgets.QDialog):
     """
-    Ridiculous little class, but it lets us know which button was clicked, easily.
+    Base dialog for both of our open-by-name dialogs
     """
 
-    def __init__(self, parent, world_name, filename, extra_text):
+    def __init__(self, parent, main_label):
         super().__init__(parent)
-        self.parent = parent
-        self.world_name = world_name
-        self.filename = filename
-        if extra_text and extra_text != '':
-            self.setText("{}\n{}".format(world_name, extra_text))
-        else:
-            self.setText(world_name)
-        self.clicked.connect(self.planet_clicked)
-
-    def planet_clicked(self):
-        self.parent.planet_clicked(self.filename)
-
-class PlayerNameButton(QtWidgets.QPushButton):
-    """
-    Ridiculous little class, but it lets us know which button was clicked, easily.
-    """
-
-    def __init__(self, parent, player, mtime):
-        super().__init__(parent)
-        self.parent = parent
-        self.player = player
-        human_date = datetime.datetime.fromtimestamp(mtime).strftime('%c')
-        # TODO: meh, as usual, getting HTML/rich text inside a Qt widget is hard.
-        # Would like to Bold the name here, but I don't think it's worth it.
-        self.setText("{}\n{}".format(player.name, human_date))
-        self.clicked.connect(self.player_clicked)
-
-    def player_clicked(self):
-        self.parent.player_clicked(self.player)
-
-class OpenByPlanetName(QtWidgets.QDialog):
-    """
-    Dialog to open a world by planet name, rather than by filename
-    """
-
-    def __init__(self, parent, player):
-        super().__init__(parent)
-        self.player = player
         self.setModal(True)
         self.setSizeGripEnabled(True)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setMinimumSize(400, 300)
         self.setWindowTitle('Load Starbound World')
 
-        self.chosen_filename = None
-
         # Layout info
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
 
         # Title
-        title_label = QtWidgets.QLabel('Open Starbound World for {}'.format(player.name), self)
+        title_label = QtWidgets.QLabel(main_label, self)
         title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
         layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
 
-        # Scrolled Area (planets)
+        # Scrolled Area
         self.scroll = QtWidgets.QScrollArea(self)
         self.scroll.setWidgetResizable(True)
 
@@ -809,12 +769,10 @@ class OpenByPlanetName(QtWidgets.QDialog):
         self.grid = QtWidgets.QGridLayout()
         contents.setLayout(self.grid)
 
-        # Initial view: players
-        idx = -1
-        for idx, (_, world_name, extra_text, filename) in enumerate(sorted(player.get_worlds(parent.mainwindow.data))):
-            self.grid.addWidget(PlanetNameButton(self, world_name, filename, extra_text), idx, 0)
-        self.grid.addWidget(QtWidgets.QLabel(''), idx+1, 0)
-        self.grid.setRowStretch(idx+1, 1)
+        # Populate contents
+        last_row = self.populate_contents()
+        self.grid.addWidget(QtWidgets.QLabel(''), last_row+1, 0)
+        self.grid.setRowStretch(last_row+1, 1)
 
         # Add our contents to the scroll widget
         layout.addWidget(self.scroll, 1)
@@ -826,6 +784,54 @@ class OpenByPlanetName(QtWidgets.QDialog):
         buttonbox.rejected.connect(self.reject)
         layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
 
+    def populate_contents(self):
+        """
+        This is where the buttons get generated
+        """
+        raise Exception('Implement me!')
+
+class OpenByPlanetName(OpenByDialog):
+    """
+    Dialog to open a world by planet name, rather than by filename
+    """
+
+    class PlanetNameButton(QtWidgets.QPushButton):
+        """
+        Ridiculous little class, but it lets us know which button was clicked, easily.
+        """
+
+        def __init__(self, parent, world_name, filename, extra_text):
+            super().__init__(parent)
+            self.parent = parent
+            self.world_name = world_name
+            self.filename = filename
+            if extra_text and extra_text != '':
+                self.setText("{}\n{}".format(world_name, extra_text))
+            else:
+                self.setText(world_name)
+            self.clicked.connect(self.planet_clicked)
+
+        def planet_clicked(self):
+            self.parent.planet_clicked(self.filename)
+
+    def __init__(self, parent, player):
+
+        self.player = player
+        self.parent_dialog = parent
+        self.chosen_filename = None
+        super().__init__(parent, 'Open Starbound World for {}'.format(player.name))
+
+    def populate_contents(self):
+        """
+        This is where the buttons get generated
+        """
+        idx = -1
+        for idx, (_, world_name, extra_text, filename) in enumerate(
+                sorted(self.player.get_worlds(self.parent_dialog.mainwindow.data))
+                ):
+            self.grid.addWidget(OpenByPlanetName.PlanetNameButton(self, world_name, filename, extra_text), idx, 0)
+        return idx
+
     def planet_clicked(self, filename):
         """
         A planet was chosen
@@ -833,59 +839,47 @@ class OpenByPlanetName(QtWidgets.QDialog):
         self.parent().planet_clicked(filename)
         self.accept()
 
-class OpenByPlayerName(QtWidgets.QDialog):
+class OpenByPlayerName(OpenByDialog):
     """
     Dialog to open a world by player name, rather than by filename
     """
 
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.mainwindow = parent
-        self.setModal(True)
-        self.setSizeGripEnabled(True)
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setMinimumSize(400, 300)
-        self.setWindowTitle('Load Starbound World')
+    class PlayerNameButton(QtWidgets.QPushButton):
+        """
+        Ridiculous little class, but it lets us know which button was clicked, easily.
+        """
 
+        def __init__(self, parent, player, mtime):
+            super().__init__(parent)
+            self.parent = parent
+            self.player = player
+            human_date = datetime.datetime.fromtimestamp(mtime).strftime('%c')
+            # TODO: meh, as usual, getting HTML/rich text inside a Qt widget is hard.
+            # Would like to Bold the name here, but I don't think it's worth it.
+            self.setText("{}\n{}".format(player.name, human_date))
+            self.clicked.connect(self.player_clicked)
+
+        def player_clicked(self):
+            self.parent.player_clicked(self.player)
+
+    def __init__(self, parent):
+
+        self.mainwindow = parent
         self.chosen_player = None
         self.chosen_filename = None
+        super().__init__(parent, 'Open Starbound World')
 
-        # Layout info
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
-
-        # Title
-        title_label = QtWidgets.QLabel('Open Starbound World', self)
-        title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
-        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
-
-        # Scrolled Area (players, planets)
-        self.scroll = QtWidgets.QScrollArea(self)
-        self.scroll.setWidgetResizable(True)
-
-        # Scroll Contents
-        self.contents = QtWidgets.QWidget(self)
-        self.grid = QtWidgets.QGridLayout()
-        self.contents.setLayout(self.grid)
-
-        # Initial view: players
+    def populate_contents(self):
+        """
+        This is where the buttons get generated
+        """
+        idx = -1
         self.buttons = []
         for idx, (mtime, player) in enumerate(self.mainwindow.data.get_all_players()):
-            button = PlayerNameButton(self, player, mtime)
+            button = OpenByPlayerName.PlayerNameButton(self, player, mtime)
             self.buttons.append(button)
             self.grid.addWidget(button, idx, 0)
-        self.grid.addWidget(QtWidgets.QLabel(''), idx+1, 0)
-        self.grid.setRowStretch(idx+1, 1)
-
-        # Add our contents to the scroll widget
-        layout.addWidget(self.scroll, 1)
-        self.scroll.setWidget(self.contents)
-
-        # Buttons
-        buttonbox = QtWidgets.QDialogButtonBox(self)
-        buttonbox.addButton(QtWidgets.QDialogButtonBox.Cancel)
-        buttonbox.rejected.connect(self.reject)
-        layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
+        return idx
 
     def player_clicked(self, player):
         """
