@@ -38,9 +38,9 @@ friendlier:
 
 The map will start out centered on the level spawn point, though if the
 level contains a mech beacon, it will be centered there instead (since
-generally the spawn points of levels with mech beacons don't actually
-have anything around the spawn point).  Once on the main screen, there's
-not a lot to do except scroll around using scrollbars or by dragging the map:
+generally levels with mech beacons don't actually have anything around the
+spawn point).  Once on the main screen, there's not a lot to do except scroll
+around using scrollbars or by dragging the map:
 
 [![Main Window](screenshots/mainwindow.png)](screenshots/mainwindow.png)
 
