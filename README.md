@@ -89,8 +89,10 @@ TODO
  - Support for mods
  - Performance improvements
    - Resource loading:
-     - This only takes about 5-6 sec on my machine, so it's not bad,
-       but I suspect I could get rid of some spurious PNG conversions
+     - Could maybe move to loading these on-demand.  The material/matmods
+       themselves only take about 0.2sec to fully load (on my system), so
+       they're not a problem, but objects take nearly 5sec, and then
+       plants add another second or so.
    - Specific tile types
      - Scenes with lots of liquids get bogged down a bit...
    - Map loading/rendering:
