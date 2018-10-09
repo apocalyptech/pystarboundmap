@@ -184,6 +184,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         self.setPos(gui_x, gui_y)
         self.setZValue(Constants.z_overlay)
         self.plants = []
+        self.objects = []
 
         # Convenience vars
         materials = self.parent.data.materials
@@ -261,6 +262,13 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         """
         self.plants.append((desc, obj_list))
 
+    def add_object(self, obj_data, obj_name, obj_orientation, qpmi):
+        """
+        Adds an attached object, with its object data, name, orientation,
+        and QGraphicsPixmapItem
+        """
+        self.objects.append((obj_data, obj_name, obj_orientation, qpmi))
+
     def hoverEnterEvent(self, event=None):
         data_table = self.parent.mainwindow.data_table
         materials = self.parent.data.materials
@@ -313,6 +321,11 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         # Gather a list of entities to report on
         entities = []
 
+        # Objects!
+        for (obj_data, obj_name, obj_orientation, qpmi) in self.objects:
+            entities.append(obj_name)
+            qpmi.setPixmap(obj_data.get_hi_image(obj_orientation))
+
         # Plants!
         for (desc, part_list) in self.plants:
             entities.append(desc)
@@ -330,6 +343,10 @@ class GUITile(QtWidgets.QGraphicsRectItem):
     def hoverLeaveEvent(self, event=None):
         self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+
+        # Restore object images
+        for (obj_data, obj_name, obj_orientation, qpmi) in self.objects:
+            qpmi.setPixmap(obj_data.get_image(obj_orientation)[0])
 
         # Restore plant images
         for (desc, part_list) in self.plants:
@@ -428,10 +445,10 @@ class GUIRegion(object):
                     qpmi.setZValue(Constants.z_objects)
                     self.scene.addItem(qpmi)
                     self.children.append(qpmi)
-                    #rel_x = obj_x - base_x
-                    #rel_y = obj_y - base_y
-                    #tile_idx = rel_y*32 + rel_x
-                    #self.tiles[tile_idx].add_entity(obj, qpmi)
+                    rel_x = obj_x - base_x
+                    rel_y = obj_y - base_y
+                    tile_idx = rel_y*32 + rel_x
+                    self.tiles[tile_idx].add_object(obj, obj_name, obj_orientation, qpmi)
             elif e.name == 'PlantEntity':
                 desc = e.data['descriptions']['description']
                 images = []
@@ -787,7 +804,7 @@ class DataTable(QtWidgets.QWidget):
         label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.layout.addWidget(label,
                 self.cur_row, 0,
-                QtCore.Qt.AlignRight,
+                QtCore.Qt.AlignRight | QtCore.Qt.AlignTop,
                 )
         data_label = QtWidgets.QLabel()
         data_label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Minimum)

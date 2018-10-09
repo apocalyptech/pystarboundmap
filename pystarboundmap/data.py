@@ -228,6 +228,7 @@ class SBObjectOrientation(object):
         self.offset = (0, 0)
         self.anchor = (0, 0)
         self.image = None
+        self._hi_image = None
 
         # Grab offset, if we can
         if 'imagePosition' in info:
@@ -290,6 +291,24 @@ class SBObjectOrientation(object):
                 frames[base_filename] = frames['default']
         return frames[base_filename]
 
+    @property
+    def hi_image(self):
+        """
+        Generates a highlighted version of this image.  We're doing it this
+        way because the vast majority of these will never need to be
+        generated on a single run of the app, so why waste time during data
+        load?  Instead we'll incur a slight penalty when the image is first
+        required.
+        """
+        if not self._hi_image:
+            self._hi_image = self.image.copy()
+            painter = QtGui.QPainter(self._hi_image)
+            painter.setCompositionMode(painter.CompositionMode_SourceAtop)
+            painter.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255, 100)))
+            painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+            painter.drawRect(0, 0, self._hi_image.width(), self._hi_image.height())
+        return self._hi_image
+
 class SBObject(object):
     """
     Class to hold info about a starbound "object".  We're ignoring a lot
@@ -310,7 +329,7 @@ class SBObject(object):
         """
         Returns a tuple for displaying the image of this object, at the
         given orientation.  The first element will be the image data
-        (as a PNG), the second two will be the x and y offsets at which
+        (as a QPixmap), the second two will be the x and y offsets at which
         it should be rendered.
         """
         if orientation < len(self.orientations):
@@ -318,6 +337,19 @@ class SBObject(object):
         else:
             orient = self.orientations[0]
         return (orient.image, orient.offset[0], orient.offset[1])
+
+    def get_hi_image(self, orientation):
+        """
+        Returns the highlighted image data for the specified orientation
+        (as a QPixmap).  This doesn't provide offset info because it's only
+        used while hovering, and the position data is already set at that
+        point
+        """
+        if orientation < len(self.orientations):
+            orient = self.orientations[orientation]
+        else:
+            orient = self.orientations[0]
+        return orient.hi_image
 
 class Liquid(object):
     """

@@ -120,8 +120,6 @@ TODO
    inside Starbound itself, and I highly doubt I'd be able to get it the
    same, but maps would probably still look nicer with them randomized)
  - Parse render templates properly
- - "Attach" objects/plants to Tile objects so they can be reported in
-   the mouseover notifications
  - Make sure we gracefully handle situations where the Starbound install dir
    disappears on us between runs; I suspect right now the app will just crash
    and the only way to get it to run again would be to manually clear out the
