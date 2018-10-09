@@ -178,12 +178,12 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         self.gui_x = gui_x
         self.gui_y = gui_y
         self.setAcceptHoverEvents(True)
-        #self.setFlags(self.ItemIsFocusable)
         self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
         self.setRect(0, 0, 8, 8)
         self.setPos(gui_x, gui_y)
         self.setZValue(Constants.z_overlay)
+        self.plants = []
 
         # Convenience vars
         materials = self.parent.data.materials
@@ -254,6 +254,13 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             self.parent.removeItem(self.liquid)
             self.liquid = None
 
+    def add_plant(self, desc, obj_list):
+        """
+        Adds an attached plant by its description name, and its associated Plant
+        objects
+        """
+        self.plants.append((desc, obj_list))
+
     def hoverEnterEvent(self, event=None):
         data_table = self.parent.mainwindow.data_table
         materials = self.parent.data.materials
@@ -303,16 +310,31 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             else:
                 data_table.set_liquid('')
 
+        # Gather a list of entities to report on
+        entities = []
+
+        # Plants!
+        for (desc, part_list) in self.plants:
+            entities.append(desc)
+            for (plant_obj, qpmi) in part_list:
+                qpmi.setPixmap(plant_obj.hi_image)
+
+        # Update the datatable with our entity info
+        data_table.set_entities(entities)
+
         # TODO: Might want to pre-brighten our images and swap 'em out.  Or
         # at least do so for objects, so we could highlight the whole thing.
         self.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255, 128)))
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
-        #self.setFocus()
 
     def hoverLeaveEvent(self, event=None):
         self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
-        #self.clearFocus()
+
+        # Restore plant images
+        for (desc, part_list) in self.plants:
+            for (plant_obj, qpmi) in part_list:
+                qpmi.setPixmap(plant_obj.image)
 
 class GUIRegion(object):
     """
@@ -406,7 +428,13 @@ class GUIRegion(object):
                     qpmi.setZValue(Constants.z_objects)
                     self.scene.addItem(qpmi)
                     self.children.append(qpmi)
+                    #rel_x = obj_x - base_x
+                    #rel_y = obj_y - base_y
+                    #tile_idx = rel_y*32 + rel_x
+                    #self.tiles[tile_idx].add_entity(obj, qpmi)
             elif e.name == 'PlantEntity':
+                desc = e.data['descriptions']['description']
+                images = []
                 (obj_x, obj_y) = tuple(e.data['tilePosition'])
                 for piece in e.data['pieces']:
                     piece_img = piece['image'].split('?')[0]
@@ -418,10 +446,15 @@ class GUIRegion(object):
                                 (world.height*8)-(obj_y*8) - (piece['offset'][1]*8) - img.height(),
                                 )
                         qpmi.setZValue(Constants.z_plants)
+                        images.append((plants[piece_img], qpmi))
                         self.scene.addItem(qpmi)
                         self.children.append(qpmi)
                     else:
                         print('not found: {}'.format(piece_img))
+                rel_x = obj_x - base_x
+                rel_y = obj_y - base_y
+                tile_idx = rel_y*32 + rel_x
+                self.tiles[tile_idx].add_plant(desc, images)
             elif (e.name == 'MonsterEntity'
                     or e.name == 'NpcEntity'
                     or e.name == 'StagehandEntity'
@@ -741,6 +774,7 @@ class DataTable(QtWidgets.QWidget):
         self.back_mat_label = self.add_row('Back Mat')
         self.back_matmod_label = self.add_row('Back Mod')
         self.liquid_label = self.add_row('Liquid')
+        self.entities_label = self.add_row('Entities')
 
         # Spacer at the bottom so that the other cells don't expand
         self.layout.addWidget(QtWidgets.QLabel(),
@@ -798,6 +832,9 @@ class DataTable(QtWidgets.QWidget):
 
     def set_liquid(self, liquid):
         self.liquid_label.setText(liquid)
+
+    def set_entities(self, entity_list):
+        self.entities_label.setText('<br/>'.join(entity_list))
 
 class RegionLoadingNotifier(QtWidgets.QWidget):
     """

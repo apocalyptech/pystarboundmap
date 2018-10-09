@@ -197,6 +197,25 @@ class Plant(object):
     def __init__(self, pathname, pakdata):
         self.image = QtGui.QPixmap()
         self.image.loadFromData(pakdata.get(pathname))
+        self._hi_image = None
+
+    @property
+    def hi_image(self):
+        """
+        Generates a highlighted version of this image.  We're doing it this
+        way because the vast majority of these will never need to be
+        generated on a single run of the app, so why waste time during data
+        load?  Instead we'll incur a slight penalty when the image is first
+        required.
+        """
+        if not self._hi_image:
+            self._hi_image = self.image.copy()
+            painter = QtGui.QPainter(self._hi_image)
+            painter.setCompositionMode(painter.CompositionMode_SourceAtop)
+            painter.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255, 100)))
+            painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+            painter.drawRect(0, 0, self._hi_image.width(), self._hi_image.height())
+        return self._hi_image
 
 class SBObjectOrientation(object):
     """
