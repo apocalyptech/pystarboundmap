@@ -145,17 +145,29 @@ class Material(object):
         cropped = full_image.crop(crop_parameters)
         df = io.BytesIO()
         cropped.save(df, format='png')
-        #self.image = df.getvalue()
         self.image = QtGui.QPixmap()
         if not self.image.loadFromData(df.getvalue()):
             raise Exception('Could not load material {}'.format(self.name))
 
-        self.bgimage = QtGui.QPixmap()
-        self.bgimage.loadFromData(df.getvalue())
-        painter = QtGui.QPainter(self.bgimage)
-        painter.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 192)))
-        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
-        painter.drawRect(0, 0, 8, 8)
+        self._bgimage = None
+
+    @property
+    def bgimage(self):
+        """
+        Generates a background version of this image.  We're doing it this
+        way because the vast majority of these will never need to be
+        generated on a single run of the app, so why waste time during data
+        load?  Instead we'll incur a slight penalty when the image is first
+        required.  (Though the volume of the data is such that generating
+        them all hardly mattered anyway - all materials and matmods could
+        be generated in about 0.2sec on my PC.)
+        """
+
+        if not self._bgimage:
+            self._bgimage = StarboundData.highlight_pixmap(
+                    self.image.copy(), 0, 0, 0, 192,
+                    )
+        return self._bgimage
 
 class Matmod(object):
     """
@@ -174,18 +186,29 @@ class Matmod(object):
         cropped = full_image.crop((0, 8, 16, 24))
         df = io.BytesIO()
         cropped.save(df, format='png')
-        #self.image = df.getvalue()
         self.image = QtGui.QPixmap()
         if not self.image.loadFromData(df.getvalue()):
             raise Exception('Could not load material {}'.format(self.name))
 
-        self.bgimage = QtGui.QPixmap()
-        self.bgimage.loadFromData(df.getvalue())
-        painter = QtGui.QPainter(self.bgimage)
-        painter.setCompositionMode(painter.CompositionMode_DestinationIn)
-        painter.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 192)))
-        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
-        painter.drawRect(0, 0, 16, 16)
+        self._bgimage = None
+
+    @property
+    def bgimage(self):
+        """
+        Generates a background version of this image.  We're doing it this
+        way because the vast majority of these will never need to be
+        generated on a single run of the app, so why waste time during data
+        load?  Instead we'll incur a slight penalty when the image is first
+        required.  (Though the volume of the data is such that generating
+        them all hardly mattered anyway - all materials and matmods could
+        be generated in about 0.2sec on my PC.)
+        """
+
+        if not self._bgimage:
+            self._bgimage = StarboundData.highlight_pixmap(
+                    self.image.copy(), 0, 0, 0, 90,
+                    )
+        return self._bgimage
 
 class Plant(object):
     """
@@ -209,12 +232,9 @@ class Plant(object):
         required.
         """
         if not self._hi_image:
-            self._hi_image = self.image.copy()
-            painter = QtGui.QPainter(self._hi_image)
-            painter.setCompositionMode(painter.CompositionMode_SourceAtop)
-            painter.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255, 100)))
-            painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
-            painter.drawRect(0, 0, self._hi_image.width(), self._hi_image.height())
+            self._hi_image = StarboundData.highlight_pixmap(
+                    self.image.copy(), 255, 255, 255, 100,
+                    )
         return self._hi_image
 
 class SBObjectOrientation(object):
@@ -301,12 +321,9 @@ class SBObjectOrientation(object):
         required.
         """
         if not self._hi_image:
-            self._hi_image = self.image.copy()
-            painter = QtGui.QPainter(self._hi_image)
-            painter.setCompositionMode(painter.CompositionMode_SourceAtop)
-            painter.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255, 100)))
-            painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
-            painter.drawRect(0, 0, self._hi_image.width(), self._hi_image.height())
+            self._hi_image = StarboundData.highlight_pixmap(
+                    self.image.copy(), 255, 255, 255, 100,
+                    )
         return self._hi_image
 
 class SBObject(object):
@@ -974,3 +991,17 @@ class StarboundData(object):
         else:
             print('Unknown world type: {}'.format(world_type))
         return None
+
+    @staticmethod
+    def highlight_pixmap(pixmap, r, g, b, a):
+        """
+        Given a QPixmap `pixmap`, highlight it with the given color.
+        For convenience, returns `pixmap`, though of course the reference
+        will not have changed.
+        """
+        painter = QtGui.QPainter(pixmap)
+        painter.setCompositionMode(painter.CompositionMode_SourceAtop)
+        painter.setBrush(QtGui.QBrush(QtGui.QColor(r, g, b, a)))
+        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        painter.drawRect(0, 0, pixmap.width(), pixmap.height())
+        return pixmap

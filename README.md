@@ -78,7 +78,6 @@ TODO
    - This is something which probably made more sense when the app was
      attempting to load literally the whole map at once.  Might not be
      worth it with the current more-limited loaded set.
- - Platforms seem to draw a black area underneath 'em
  - Visualization of explored areas (as defined by light sources)
  - Autodetect game location improvements
    - Theoretically we autodetect Steam install locations now
