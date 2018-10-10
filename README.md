@@ -39,13 +39,15 @@ friendlier:
 The map will start out centered on the level spawn point, though if the
 level contains a mech beacon, it will be centered there instead (since
 levels with mech beacons generally don't have anything interesting around the
-spawn point).  Once on the main screen, there's not a lot to do except scroll
-around using scrollbars or by dragging the map:
+spawn point).  Once on the main screen, the functionality is pretty basic:
 
 [![Main Window](screenshots/mainwindow.png)](screenshots/mainwindow.png)
 
 The information about the currently-hovered tile will be shown on the lefthand
-side of the screen, which can be resized by dragging on the edge.
+side of the screen, which can be resized by dragging on the edge.  You can
+scroll using the scrollbars or by click-and-drag on the map itself.  The
+various layers can be toggled on/off, so if you wanted to check this to find
+any holes in your base's background tile placement, that may be useful, etc.
 
 The "Navigate" menu will let you go directly to a specific coordinate, the
 spawn point, the level mech beacon (if one exists), the "current" player
