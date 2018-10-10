@@ -150,6 +150,7 @@ class Material(object):
             raise Exception('Could not load material {}'.format(self.name))
 
         self._bgimage = None
+        self._midimage = None
 
     @property
     def bgimage(self):
@@ -168,6 +169,18 @@ class Material(object):
                     self.image.copy(), 0, 0, 0, 192,
                     )
         return self._bgimage
+
+    @property
+    def midimage(self):
+        """
+        Same story as above, but for a midrange highlight
+        """
+
+        if not self._midimage:
+            self._midimage = StarboundData.highlight_pixmap(
+                    self.image.copy(), 0, 0, 0, 96,
+                    )
+        return self._midimage
 
 class Matmod(object):
     """
@@ -191,6 +204,7 @@ class Matmod(object):
             raise Exception('Could not load material {}'.format(self.name))
 
         self._bgimage = None
+        self._midimage = None
 
     @property
     def bgimage(self):
@@ -209,6 +223,18 @@ class Matmod(object):
                     self.image.copy(), 0, 0, 0, 90,
                     )
         return self._bgimage
+
+    @property
+    def midimage(self):
+        """
+        Same story as above, but for a midrange highlight
+        """
+
+        if not self._midimage:
+            self._midimage = StarboundData.highlight_pixmap(
+                    self.image.copy(), 0, 0, 0, 45,
+                    )
+        return self._midimage
 
 class Plant(object):
     """

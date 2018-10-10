@@ -195,7 +195,11 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         # Materials (background)
         self.material_background = None
         if tile.background_material in materials:
-            self.material_background = QtWidgets.QGraphicsPixmapItem(materials[tile.background_material].bgimage)
+            if layer_toggles.back_mid_toggle.isChecked():
+                image = materials[tile.background_material].midimage
+            else:
+                image = materials[tile.background_material].bgimage
+            self.material_background = QtWidgets.QGraphicsPixmapItem(image)
             self.material_background.setPos(gui_x, gui_y)
             self.material_background.setZValue(Constants.z_background)
             if not layer_toggles.back_toggle.isChecked():
@@ -205,7 +209,11 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         # Matmods (background)
         self.mod_background = None
         if tile.background_mod in matmods:
-            self.mod_background = QtWidgets.QGraphicsPixmapItem(matmods[tile.background_mod].bgimage)
+            if layer_toggles.back_mid_toggle.isChecked():
+                image = matmods[tile.background_mod].midimage
+            else:
+                image = matmods[tile.background_mod].bgimage
+            self.mod_background = QtWidgets.QGraphicsPixmapItem(image)
             self.mod_background.setPos(gui_x-4, gui_y-4)
             self.mod_background.setZValue(Constants.z_background_mod)
             if not layer_toggles.back_mod_toggle.isChecked():
@@ -378,6 +386,23 @@ class GUITile(QtWidgets.QGraphicsRectItem):
     def toggle_back_mod(self, checked):
         if self.mod_background:
             self.mod_background.setVisible(checked)
+
+    def toggle_back_mid(self, checked):
+        """
+        Toggles whether we're using mid-brightness background images
+        """
+        if self.material_background:
+            if checked:
+                image = self.parent.data.materials[self.tile.background_material].midimage
+            else:
+                image = self.parent.data.materials[self.tile.background_material].bgimage
+            self.material_background.setPixmap(image)
+        if self.mod_background:
+            if checked:
+                image = self.parent.data.matmods[self.tile.background_mod].midimage
+            else:
+                image = self.parent.data.matmods[self.tile.background_mod].bgimage
+            self.mod_background.setPixmap(image)
 
     def toggle_liquids(self, checked):
         if self.liquid:
@@ -568,6 +593,13 @@ class GUIRegion(object):
         """
         for tile in self.tiles:
             tile.toggle_back_mod(checked)
+
+    def toggle_back_mid(self, checked):
+        """
+        Toggle midrange background highlighting
+        """
+        for tile in self.tiles:
+            tile.toggle_back_mid(checked)
 
     def toggle_liquids(self, checked):
         """
@@ -862,6 +894,13 @@ class MapScene(QtWidgets.QGraphicsScene):
         for region in self.loaded_regions:
             self.regions[region].toggle_back_mod(checked)
 
+    def toggle_back_mid(self, checked):
+        """
+        Toggle midrange background highlighting
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_back_mid(checked)
+
     def toggle_liquids(self, checked):
         """
         Toggle liquids
@@ -1012,21 +1051,42 @@ class LayerToggles(QtWidgets.QWidget):
         self.grid.addWidget(label, 0, 0)
         self.cur_row = 1
 
-        self.fore_toggle = self.add_row('Foreground Material', self.toggle_foreground)
-        self.fore_mod_toggle = self.add_row('Foreground Mods', self.maingui.scene.toggle_fore_mod, indent=True)
-        self.back_toggle = self.add_row('Background Material', self.toggle_background)
-        self.back_mod_toggle = self.add_row('Background Mods', self.maingui.scene.toggle_back_mod, indent=True)
-        self.liquids_toggle = self.add_row('Liquids', self.maingui.scene.toggle_liquids)
-        self.objects_toggle = self.add_row('Objects', self.maingui.scene.toggle_objects)
-        self.plants_toggle = self.add_row('Plants', self.maingui.scene.toggle_plants)
+        self.fore_toggle = self.add_row('Foreground Material',
+                self.toggle_foreground,
+                )
+        self.fore_mod_toggle = self.add_row('Foreground Mods',
+                self.maingui.scene.toggle_fore_mod,
+                indent=True,
+                )
+        self.back_toggle = self.add_row('Background Material',
+                self.toggle_background,
+                )
+        self.back_mod_toggle = self.add_row('Background Mods',
+                self.maingui.scene.toggle_back_mod,
+                indent=True,
+                )
+        self.back_mid_toggle = self.add_row('Use Brighter BG Images',
+                self.maingui.scene.toggle_back_mid,
+                indent=True,
+                default=False,
+                )
+        self.liquids_toggle = self.add_row('Liquids',
+                self.maingui.scene.toggle_liquids,
+                )
+        self.objects_toggle = self.add_row('Objects',
+                self.maingui.scene.toggle_objects,
+                )
+        self.plants_toggle = self.add_row('Plants',
+                self.maingui.scene.toggle_plants,
+                )
 
-    def add_row(self, label_text, callback, indent=False):
+    def add_row(self, label_text, callback, indent=False, default=True):
         """
         Adds a row to toggle.
         """
 
         checkbox = QtWidgets.QCheckBox(label_text, self)
-        checkbox.setChecked(True)
+        checkbox.setChecked(default)
         checkbox.toggled.connect(callback)
         if indent:
             w = QtWidgets.QWidget()

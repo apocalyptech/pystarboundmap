@@ -129,8 +129,6 @@ TODO
  - Either do the on-demand resource loading thing, or make sure that the
    "cancel" button on the resource-loading progress dialog does the right
    thing.
- - Option to lighten up the background layer (mostly for when you've got
-   the foreground hidden)
  - Should we save the layer toggle states?
 
 LICENSE
