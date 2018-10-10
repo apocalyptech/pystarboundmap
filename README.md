@@ -109,7 +109,6 @@ TODO
      - Keep a "history" of loaded Regions and only expire them after
        they haven't been used in N redraws?  That way, scrolling back
        to a previously-visited area would be less likely to have to re-load.
- - Toggles for various element types?
  - Fancier rendering?  (base map materials have "edges" which we completely
    ignore at the moment.  Would presumably increase render times...
    - Material edges
@@ -126,6 +125,12 @@ TODO
    disappears on us between runs; I suspect right now the app will just crash
    and the only way to get it to run again would be to manually clear out the
    config file.
+ - Either do the on-demand resource loading thing, or make sure that the
+   "cancel" button on the resource-loading progress dialog does the right
+   thing.
+ - Option to lighten up the background layer (mostly for when you've got
+   the foreground hidden)
+ - Should we save the layer toggle states?
 
 LICENSE
 -------

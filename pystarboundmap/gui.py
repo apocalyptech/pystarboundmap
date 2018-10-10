@@ -168,7 +168,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
     Hoverable area which the user can click on for info, etc.
     """
 
-    def __init__(self, parent, tile, x, y, region, gui_x, gui_y):
+    def __init__(self, parent, tile, x, y, region, gui_x, gui_y, layer_toggles):
         super().__init__()
         self.parent = parent
         self.tile = tile
@@ -194,18 +194,22 @@ class GUITile(QtWidgets.QGraphicsRectItem):
 
         # Materials (background)
         self.material_background = None
-        if tile.background_material in materials and tile.foreground_material not in materials:
+        if tile.background_material in materials:
             self.material_background = QtWidgets.QGraphicsPixmapItem(materials[tile.background_material].bgimage)
             self.material_background.setPos(gui_x, gui_y)
             self.material_background.setZValue(Constants.z_background)
+            if not layer_toggles.back_toggle.isChecked():
+                self.material_background.setVisible(False)
             self.parent.addItem(self.material_background)
 
         # Matmods (background)
         self.mod_background = None
-        if tile.background_mod in matmods and tile.foreground_material not in materials:
+        if tile.background_mod in matmods:
             self.mod_background = QtWidgets.QGraphicsPixmapItem(matmods[tile.background_mod].bgimage)
             self.mod_background.setPos(gui_x-4, gui_y-4)
             self.mod_background.setZValue(Constants.z_background_mod)
+            if not layer_toggles.back_mod_toggle.isChecked():
+                self.mod_background.setVisible(False)
             self.parent.addItem(self.mod_background)
 
         # Materials (foreground)
@@ -214,6 +218,8 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             self.material_foreground = QtWidgets.QGraphicsPixmapItem(materials[tile.foreground_material].image)
             self.material_foreground.setPos(gui_x, gui_y)
             self.material_foreground.setZValue(Constants.z_foreground)
+            if not layer_toggles.fore_toggle.isChecked():
+                self.material_foreground.setVisible(False)
             self.parent.addItem(self.material_foreground)
 
         # Matmods (foreground)
@@ -222,6 +228,8 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             self.mod_foreground = QtWidgets.QGraphicsPixmapItem(matmods[tile.foreground_mod].image)
             self.mod_foreground.setPos(gui_x-4, gui_y-4)
             self.mod_foreground.setZValue(Constants.z_foreground_mod)
+            if not layer_toggles.fore_mod_toggle.isChecked():
+                self.mod_foreground.setVisible(False)
             self.parent.addItem(self.mod_foreground)
 
         # Liquids
@@ -233,6 +241,8 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             self.liquid.setBrush(QtGui.QBrush(liquids[tile.liquid].overlay))
             self.liquid.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
             self.liquid.setZValue(Constants.z_liquids)
+            if not layer_toggles.liquids_toggle.isChecked():
+                self.liquid.setVisible(False)
             self.parent.addItem(self.liquid)
 
     def unload(self):
@@ -353,6 +363,26 @@ class GUITile(QtWidgets.QGraphicsRectItem):
             for (plant_obj, qpmi) in part_list:
                 qpmi.setPixmap(plant_obj.image)
 
+    def toggle_foreground(self, checked):
+        if self.material_foreground:
+            self.material_foreground.setVisible(checked)
+
+    def toggle_fore_mod(self, checked):
+        if self.mod_foreground:
+            self.mod_foreground.setVisible(checked)
+
+    def toggle_background(self, checked):
+        if self.material_background:
+            self.material_background.setVisible(checked)
+
+    def toggle_back_mod(self, checked):
+        if self.mod_background:
+            self.mod_background.setVisible(checked)
+
+    def toggle_liquids(self, checked):
+        if self.liquid:
+            self.liquid.setVisible(checked)
+
 class GUIRegion(object):
     """
     Class to hold info about a single region
@@ -360,11 +390,14 @@ class GUIRegion(object):
 
     def __init__(self, scene, rx, ry, data, world):
         self.scene = scene
+        self.layer_toggles = scene.mainwindow.layer_toggles
         self.rx = rx
         self.ry = ry
         self.data = data
         self.world = world
-        self.children = []
+        self.region_back = None
+        self.objects = []
+        self.plants = []
         self.tiles = []
         self.loaded = False
 
@@ -376,7 +409,9 @@ class GUIRegion(object):
         if self.loaded:
             return
 
-        self.children = []
+        self.region_back = None
+        self.objects = []
+        self.plants = []
         self.tiles = []
 
         # Some convenience vars
@@ -401,12 +436,11 @@ class GUIRegion(object):
         gui_y = (world.height*8)-(base_y*8)
 
         # Background for our drawn area (black)
-        region_bak = self.scene.addRect(gui_x, gui_y-255, 255, 255,
+        self.region_back = self.scene.addRect(gui_x, gui_y-255, 255, 255,
                 QtGui.QPen(QtGui.QColor(0, 0, 0)),
                 QtGui.QBrush(QtGui.QColor(0, 0, 0)),
                 )
-        region_bak.setZValue(Constants.z_black)
-        self.children.append(region_bak)
+        self.region_back.setZValue(Constants.z_black)
 
         # Tiles!
         cur_row = 0
@@ -415,7 +449,8 @@ class GUIRegion(object):
             self.tiles.append(GUITile(self.scene, data_tile,
                 base_x+cur_col, base_y+cur_row,
                 self,
-                gui_x+cur_col*8, gui_y-(cur_row+1)*8))
+                gui_x+cur_col*8, gui_y-(cur_row+1)*8,
+                self.layer_toggles))
             self.scene.addItem(self.tiles[-1])
             cur_col += 1
             if cur_col == 32:
@@ -443,8 +478,10 @@ class GUIRegion(object):
                             (world.height*8)-(obj_y*8) - offset_y - image.height(),
                             )
                     qpmi.setZValue(Constants.z_objects)
+                    if not self.layer_toggles.objects_toggle.isChecked():
+                        qpmi.setVisible(False)
                     self.scene.addItem(qpmi)
-                    self.children.append(qpmi)
+                    self.objects.append(qpmi)
                     rel_x = obj_x - base_x
                     rel_y = obj_y - base_y
                     tile_idx = rel_y*32 + rel_x
@@ -463,9 +500,11 @@ class GUIRegion(object):
                                 (world.height*8)-(obj_y*8) - (piece['offset'][1]*8) - img.height(),
                                 )
                         qpmi.setZValue(Constants.z_plants)
+                        if not self.layer_toggles.plants_toggle.isChecked():
+                            qpmi.setVisible(False)
                         images.append((plants[piece_img], qpmi))
                         self.scene.addItem(qpmi)
-                        self.children.append(qpmi)
+                        self.plants.append(qpmi)
                     else:
                         print('not found: {}'.format(piece_img))
                 rel_x = obj_x - base_x
@@ -487,14 +526,69 @@ class GUIRegion(object):
         """
         Unload from the graphics scene
         """
-        for child in self.children:
-            self.scene.removeItem(child)
+        for obj in self.objects:
+            self.scene.removeItem(obj)
+        for plant in self.plants:
+            self.scene.removeItem(plant)
         for tile in self.tiles:
             tile.unload()
             self.scene.removeItem(tile)
+        if self.region_back:
+            self.scene.removeItem(self.region_back)
         self.tiles = []
-        self.children = []
+        self.objects = []
+        self.plants = []
+        self.region_back = None
         self.loaded = False
+
+    def toggle_foreground(self, checked):
+        """
+        Toggle the foreground
+        """
+        for tile in self.tiles:
+            tile.toggle_foreground(checked)
+
+    def toggle_fore_mod(self, checked):
+        """
+        Toggle the foreground mod
+        """
+        for tile in self.tiles:
+            tile.toggle_fore_mod(checked)
+
+    def toggle_background(self, checked):
+        """
+        Toggle the background
+        """
+        for tile in self.tiles:
+            tile.toggle_background(checked)
+
+    def toggle_back_mod(self, checked):
+        """
+        Toggle the background mod
+        """
+        for tile in self.tiles:
+            tile.toggle_back_mod(checked)
+
+    def toggle_liquids(self, checked):
+        """
+        Toggle liquids
+        """
+        for tile in self.tiles:
+            tile.toggle_liquids(checked)
+
+    def toggle_objects(self, checked):
+        """
+        Toggle objects
+        """
+        for obj in self.objects:
+            obj.setVisible(checked)
+
+    def toggle_plants(self, checked):
+        """
+        Toggle plants
+        """
+        for plant in self.plants:
+            plant.setVisible(checked)
 
 class MapScene(QtWidgets.QGraphicsScene):
     """
@@ -740,6 +834,55 @@ class MapScene(QtWidgets.QGraphicsScene):
         self.loaded_regions = set()
         self.draw_visible_area()
 
+    def toggle_foreground(self, checked):
+        """
+        Toggle the foreground
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_foreground(checked)
+
+    def toggle_fore_mod(self, checked):
+        """
+        Toggle the foreground
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_fore_mod(checked)
+
+    def toggle_background(self, checked):
+        """
+        Toggle the background
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_background(checked)
+
+    def toggle_back_mod(self, checked):
+        """
+        Toggle the background
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_back_mod(checked)
+
+    def toggle_liquids(self, checked):
+        """
+        Toggle liquids
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_liquids(checked)
+
+    def toggle_objects(self, checked):
+        """
+        Toggle objects
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_objects(checked)
+
+    def toggle_plants(self, checked):
+        """
+        Toggle plants
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_plants(checked)
+
 class MapArea(QtWidgets.QGraphicsView):
     """
     Main area rendering the map
@@ -852,6 +995,77 @@ class DataTable(QtWidgets.QWidget):
 
     def set_entities(self, entity_list):
         self.entities_label.setText('<br/>'.join(entity_list))
+
+class LayerToggles(QtWidgets.QWidget):
+    """
+    Widget to display a bunch of toggles for which layers to draw
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.maingui = parent
+
+        self.grid = QtWidgets.QGridLayout()
+        self.setLayout(self.grid)
+
+        label = QtWidgets.QLabel('<b>Show Layers:</b>')
+        self.grid.addWidget(label, 0, 0)
+        self.cur_row = 1
+
+        self.fore_toggle = self.add_row('Foreground Material', self.toggle_foreground)
+        self.fore_mod_toggle = self.add_row('Foreground Mods', self.maingui.scene.toggle_fore_mod, indent=True)
+        self.back_toggle = self.add_row('Background Material', self.toggle_background)
+        self.back_mod_toggle = self.add_row('Background Mods', self.maingui.scene.toggle_back_mod, indent=True)
+        self.liquids_toggle = self.add_row('Liquids', self.maingui.scene.toggle_liquids)
+        self.objects_toggle = self.add_row('Objects', self.maingui.scene.toggle_objects)
+        self.plants_toggle = self.add_row('Plants', self.maingui.scene.toggle_plants)
+
+    def add_row(self, label_text, callback, indent=False):
+        """
+        Adds a row to toggle.
+        """
+
+        checkbox = QtWidgets.QCheckBox(label_text, self)
+        checkbox.setChecked(True)
+        checkbox.toggled.connect(callback)
+        if indent:
+            w = QtWidgets.QWidget()
+            hbox = QtWidgets.QHBoxLayout()
+            spacer = QtWidgets.QWidget()
+            spacer.setFixedWidth(20)
+            hbox.addWidget(spacer)
+            hbox.addWidget(checkbox, 1, QtCore.Qt.AlignLeft)
+            hbox.setContentsMargins(0, 0, 0, 0)
+            w.setLayout(hbox)
+            self.grid.addWidget(w, self.cur_row, 0)
+        else:
+            self.grid.addWidget(checkbox, self.cur_row, 0)
+        self.cur_row += 1
+        return checkbox
+
+    def toggle_foreground(self, checked):
+        """
+        Toggles the foreground material
+        """
+        self.maingui.scene.toggle_foreground(checked)
+        self.fore_mod_toggle.setEnabled(checked)
+        if checked:
+            self.fore_mod_toggle.setChecked(self.current_fore_mod_val)
+        else:
+            self.current_fore_mod_val = self.fore_mod_toggle.isChecked()
+            self.fore_mod_toggle.setChecked(False)
+
+    def toggle_background(self, checked):
+        """
+        Toggles the background material
+        """
+        self.maingui.scene.toggle_background(checked)
+        self.back_mod_toggle.setEnabled(checked)
+        if checked:
+            self.back_mod_toggle.setChecked(self.current_back_mod_val)
+        else:
+            self.current_back_mod_val = self.back_mod_toggle.isChecked()
+            self.back_mod_toggle.setChecked(False)
 
 class RegionLoadingNotifier(QtWidgets.QWidget):
     """
@@ -1382,6 +1596,11 @@ class GUI(QtWidgets.QMainWindow):
         # Enforce menu state
         self.enforce_menu_state()
 
+        # Main Widget (setting this up before everything else so that the
+        # scene object exists for callbacks)
+        self.maparea = MapArea(self)
+        self.scene = self.maparea.scene
+
         # Lefthand side vbox
         lh = QtWidgets.QWidget()
         vbox = QtWidgets.QVBoxLayout()
@@ -1391,6 +1610,16 @@ class GUI(QtWidgets.QMainWindow):
         self.data_table = DataTable(self)
         vbox.addWidget(self.data_table, 0, QtCore.Qt.AlignLeft)
 
+        # Spacer inbetween DataTable and layer toggles
+        line = QtWidgets.QFrame()
+        line.setFrameShape(QtWidgets.QFrame.HLine)
+        line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        vbox.addWidget(line)
+
+        # Layer Toggles
+        self.layer_toggles = LayerToggles(self)
+        vbox.addWidget(self.layer_toggles, 0, QtCore.Qt.AlignLeft)
+
         # Spacer on the lefthand panel
         spacer = QtWidgets.QWidget()
         vbox.addWidget(spacer, 1)
@@ -1398,10 +1627,6 @@ class GUI(QtWidgets.QMainWindow):
         # Region-loading display
         self.region_loading = RegionLoadingNotifier(self)
         vbox.addWidget(self.region_loading, 0)
-
-        # Main Widget
-        self.maparea = MapArea(self)
-        self.scene = self.maparea.scene
 
         # Splitter to store our main widgets
         self.splitter = QtWidgets.QSplitter()
