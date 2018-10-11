@@ -134,10 +134,11 @@ class Material(object):
     like.
     """
 
-    def __init__(self, info, path, pakdata, crop_parameters):
+    def __init__(self, info, path, full_path, pakdata, crop_parameters):
         self.info = info
         self.name = info['materialName']
         self.path = path
+        self.full_path = full_path
         self.pakdata = pakdata
         self.crop_parameters = crop_parameters
 
@@ -194,9 +195,10 @@ class Matmod(object):
     we're only using the very first (top left) tile.
     """
 
-    def __init__(self, info, pakdata):
+    def __init__(self, info, full_path, pakdata):
         self.info = info
         self.name = info['modName']
+        self.full_path = full_path
         self.pakdata = pakdata
 
         self._image = None
@@ -383,10 +385,21 @@ class SBObject(object):
         self.info = info
         self.orientations = []
         self.frames = {}
+        self.full_path = '{}/{}'.format(path, filename)
         for o in info['orientations']:
             self.orientations.append(
                     SBObjectOrientation(o, self.frames, path, pakdata)
                     )
+
+    def get_image_path(self, orientation):
+        """
+        Returns the path to the graphic used
+        """
+        if orientation < len(self.orientations):
+            orient = self.orientations[orientation]
+        else:
+            orient = self.orientations[0]
+        return orient.full_image_file
 
     def get_image(self, orientation):
         """
@@ -695,9 +708,11 @@ class StarboundData(object):
         they get merged in at some point.
         """
 
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
+        def __init__(self, df, filename):
+            super().__init__(df)
             self._uuid_to_region_map = None
+            self.filename = filename
+            self.base_filename = os.path.basename(filename)
 
         @property
         def uuid_to_region_map(self):
@@ -813,6 +828,7 @@ class StarboundData(object):
                         self.materials[material['materialId']] = Material(
                                 material,
                                 obj_path,
+                                matpath,
                                 pakdata,
                                 crop_params[material['renderTemplate']],
                                 )
@@ -827,7 +843,7 @@ class StarboundData(object):
                 # All matmods, at least in the base game, are classicmaterialtemplate
                 matmodpath = '/tiles/mods/{}'.format(matmod_name)
                 matmod = json.loads(pakdata.get(matmodpath))
-                self.matmods[matmod['modId']] = Matmod(matmod, pakdata)
+                self.matmods[matmod['modId']] = Matmod(matmod, matmodpath, pakdata)
 
             # Load in object data
             self.objects = {}
@@ -954,7 +970,7 @@ class StarboundData(object):
 
         with open(filename, 'rb') as worlddf:
             worldmm = mmap.mmap(worlddf.fileno(), 0, access=mmap.ACCESS_READ)
-            world = StarboundData.World(worldmm)
+            world = StarboundData.World(worldmm, filename)
             world.read_metadata()
             return (world, worldmm)
 

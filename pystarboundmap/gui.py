@@ -280,18 +280,19 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         """
         self.plants.append((desc, obj_list))
 
-    def add_object(self, obj_data, obj_name, obj_orientation, qpmi):
+    def add_object(self, obj_data, obj_name, obj_orientation, qpmi, entity):
         """
         Adds an attached object, with its object data, name, orientation,
         and QGraphicsPixmapItem
         """
-        self.objects.append((obj_data, obj_name, obj_orientation, qpmi))
+        self.objects.append((obj_data, obj_name, obj_orientation, qpmi, entity))
 
     def hoverEnterEvent(self, event=None):
         data_table = self.parent.mainwindow.data_table
         materials = self.parent.data.materials
         matmods = self.parent.data.matmods
         liquids = self.parent.data.liquids
+        self.parent.cur_hover = self
 
         data_table.set_region(self.region.rx, self.region.ry)
         data_table.set_tile(self.x, self.y)
@@ -340,7 +341,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         entities = []
 
         # Objects!
-        for (obj_data, obj_name, obj_orientation, qpmi) in self.objects:
+        for (obj_data, obj_name, obj_orientation, qpmi, _) in self.objects:
             entities.append(obj_name)
             qpmi.setPixmap(obj_data.get_hi_image(obj_orientation))
 
@@ -363,7 +364,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
 
         # Restore object images
-        for (obj_data, obj_name, obj_orientation, qpmi) in self.objects:
+        for (obj_data, obj_name, obj_orientation, qpmi, _) in self.objects:
             qpmi.setPixmap(obj_data.get_image(obj_orientation)[0])
 
         # Restore plant images
@@ -510,7 +511,7 @@ class GUIRegion(object):
                     rel_x = obj_x - base_x
                     rel_y = obj_y - base_y
                     tile_idx = rel_y*32 + rel_x
-                    self.tiles[tile_idx].add_object(obj, obj_name, obj_orientation, qpmi)
+                    self.tiles[tile_idx].add_object(obj, obj_name, obj_orientation, qpmi, e.data)
             elif e.name == 'PlantEntity':
                 desc = e.data['descriptions']['description']
                 images = []
@@ -622,6 +623,233 @@ class GUIRegion(object):
         for plant in self.plants:
             plant.setVisible(checked)
 
+class TileInfoDialog(QtWidgets.QDialog):
+    """
+    Popup dialog for detailed tile info
+    """
+
+    def __init__(self, parent, guitile):
+        super().__init__(parent)
+        scene = guitile.parent
+        world = scene.world
+        data = scene.data
+        data_table = scene.mainwindow.data_table
+        tile = guitile.tile
+        title = 'Tile Information for ({:d}, {:d})'.format(guitile.x, guitile.y)
+        self.setModal(True)
+        self.setSizeGripEnabled(True)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setMinimumSize(600, 500)
+        self.setWindowTitle(title)
+
+        # Layout info
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        # Title
+        title_label = QtWidgets.QLabel(title, self)
+        title_label.setStyleSheet('font-weight: bold; font-size: 12pt;')
+        layout.addWidget(title_label, 0, QtCore.Qt.AlignCenter)
+
+        # Scrolled Area
+        self.scroll = QtWidgets.QScrollArea(self)
+        self.scroll.setWidgetResizable(True)
+
+        # Scroll Contents
+        contents = QtWidgets.QWidget(self)
+        self.grid = QtWidgets.QGridLayout()
+        contents.setLayout(self.grid)
+        self.cur_row = 0
+
+        # Actually populate the grid.  TODO: Taking some of this info directly
+        # from the DataTable, which is a bit unseemly.  Should push that
+        # stuff into a proper data class.
+
+        # First up: World Info
+        self.add_heading_row('World Info')
+        self.add_text_row('World Name', data_table.world_name_label.text())
+        self.add_text_row('World Type', data_table.world_type_label.text())
+        if data_table.world_extra_label.text() != '':
+            self.add_text_row('Extra Info', data_table.world_extra_label.text())
+        self.add_text_row('Filename', world.base_filename)
+        self.add_text_row('Size', '{}x{}'.format(*world.metadata['worldTemplate']['size']))
+
+        # Next: Tile Info
+        self.add_heading_row('Tile Info')
+        self.add_text_row('Region', '({:d}, {:d})'.format(guitile.region.rx, guitile.region.ry))
+        self.add_text_row('Coordinates', '({:d}, {:d})'.format(guitile.x, guitile.y))
+        self.add_lookup_text_row('Foreground Material', tile.foreground_material, data.materials)
+        self.add_lookup_text_row('Foreground Material Mod', tile.foreground_mod, data.matmods)
+        self.add_lookup_text_row('Background Material', tile.background_material, data.materials)
+        self.add_lookup_text_row('Background Material Mod', tile.background_mod, data.matmods)
+
+        # Liquids
+        if tile.liquid_level > 0:
+            extra_liquid = ' at {:d}%'.format(round(tile.liquid_level*100))
+        else:
+            extra_liquid = ''
+        self.add_lookup_text_row('Liquid', tile.liquid, data.liquids,
+                extra=extra_liquid, nothing=0)
+
+        # Plants
+        if len(guitile.plants) > 1:
+            show_index = ' {}'.format(idx+1)
+        else:
+            show_index = ''
+        for idx, (plant_desc, parts) in enumerate(guitile.plants):
+            partlist = set()
+            for (part, _) in parts:
+                partlist.add(part.pathname)
+            if len(parts) == 1:
+                plural = ''
+            else:
+                plural = 's'
+            self.add_text_row(
+                    'Plant{}'.format(show_index),
+                    '{} ({} part{})'.format(plant_desc, len(parts), plural),
+                    )
+            if len(partlist) > 0:
+                self.add_list_data(sorted(partlist))
+                self.cur_row += 1
+
+        # Objects
+        if len(guitile.objects) > 1:
+            show_index = ' {}'.format(idx+1)
+        else:
+            show_index = ''
+        for idx, (obj_data, obj_name, obj_orientation, _, entity) in enumerate(guitile.objects):
+            object_label = 'Object{}'.format(show_index)
+            self.add_text_row(
+                    object_label,
+                    '<tt>{}</tt> ({})'.format(obj_name, obj_data.info['shortdescription']),
+                    )
+            self.add_text_data('<tt>{}</tt>'.format(obj_data.full_path))
+            self.cur_row += 1
+            orient = obj_data.get_image_path(obj_orientation)
+            if orient:
+                self.add_text_data('<tt>{}</tt>'.format(orient))
+                self.cur_row += 1
+            if 'items' in entity:
+                itemlist = []
+                for item in entity['items']:
+                    if item and 'content' in item:
+                        content = item['content']
+                        if content['count'] > 1:
+                            prefix = '{}x '.format(content['count'])
+                        else:
+                            prefix = ''
+                        itemlist.append((
+                            content['name'],
+                            content['count'],
+                            '{}{}'.format(prefix, content['name']),
+                            ))
+                if len(itemlist) > 0:
+                    self.add_list_data_row(
+                            '{} Contents'.format(object_label),
+                            [i[2] for i in sorted(itemlist)],
+                            )
+
+        # Spacer at the end of the grid
+        self.grid.addWidget(QtWidgets.QLabel(''), self.cur_row, 0)
+        self.grid.setRowStretch(self.cur_row, 1)
+
+        # Make the second column stretch, not the first
+        self.grid.setColumnStretch(1, 1)
+
+        # Add our contents to the scroll widget
+        layout.addWidget(self.scroll, 1)
+        self.scroll.setWidget(contents)
+
+        # Buttons
+        buttonbox = QtWidgets.QDialogButtonBox(self)
+        buttonbox.addButton(QtWidgets.QDialogButtonBox.Ok)
+        buttonbox.accepted.connect(self.close)
+        layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
+
+    def add_heading_row(self, heading):
+        """
+        Adds a heading row
+        """
+        # A bit of space if we're not the very first row
+        if self.cur_row != 0:
+            self.grid.addWidget(QtWidgets.QLabel(''), self.cur_row, 0, 1, 2)
+            self.cur_row += 1
+
+        # Now the actual header
+        label = QtWidgets.QLabel('<b>{}</b>'.format(heading))
+        self.grid.addWidget(label, self.cur_row, 0, 1, 2, QtCore.Qt.AlignCenter)
+        self.cur_row += 1
+        return label
+
+    def add_label(self, label_text):
+        """
+        Adds a label
+        """
+        label = QtWidgets.QLabel('<b>{}</b>:'.format(label_text))
+        self.grid.addWidget(label, self.cur_row, 0, QtCore.Qt.AlignTop | QtCore.Qt.AlignRight)
+        return label
+
+    def add_text_data(self, text):
+        """
+        Adds the specified text as data
+        """
+        data = QtWidgets.QLabel(text)
+        data.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        self.grid.addWidget(data, self.cur_row, 1, QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+        return data
+
+    def add_text_row(self, label, text):
+        """
+        Adds a text row
+        """
+        label_widget = self.add_label(label)
+        data_widget = self.add_text_data(text)
+        self.cur_row += 1
+        return data_widget
+
+    def add_lookup_text_row(self, label, value, lookup, extra='', nothing=-1):
+        """
+        Adds a row whose label is looked up from a dict
+        """
+        if value in lookup:
+            text = '<tt>{}</tt>{} (ID {})'.format(lookup[value].name, extra, value)
+        else:
+            if value > nothing:
+                text = 'Unknown{} (ID {})'.format(extra, value)
+            else:
+                text = '-'
+        self.add_text_row(label, text)
+
+    def add_list_data_row(self, label, data):
+        """
+        Adds a row with list data
+        """
+        label_widget = self.add_label(label)
+        data_widget = self.add_list_data(data)
+        self.cur_row += 1
+        return data_widget
+
+    def add_list_data(self, data):
+        """
+        Adds a list of data
+        """
+
+        # TODO: I'd like to use, say, a QListWidget or something, but controlling the widget
+        # height on those was annoying, and I wanted the items to be easily copy+pasteable.
+        # In the end I'm just going with a multiline QLabel inside a QScrollArea
+
+        if len(data) == 0:
+            return None
+
+        scroll = QtWidgets.QScrollArea(self)
+        scroll.setFrameShadow(QtWidgets.QFrame.Sunken)
+        scroll.setFrameShape(QtWidgets.QFrame.Panel)
+        w = QtWidgets.QLabel('<tt>{}</tt>'.format('<br/>'.join(data)), self)
+        w.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        scroll.setWidget(w)
+        self.grid.addWidget(scroll, self.cur_row, 1)
+        return w
+
 class MapScene(QtWidgets.QGraphicsScene):
     """
     Our main scene which renders the map.
@@ -643,6 +871,7 @@ class MapScene(QtWidgets.QGraphicsScene):
 
         self.dragging = False
         self.moved = False
+        self.cur_hover = None
 
         # This is used so that our first couple of GUI-setup steps doesn't
         # trigger a map-loading event (until we're actually ready for it)
@@ -652,8 +881,6 @@ class MapScene(QtWidgets.QGraphicsScene):
         """
         Handle a mouse press event (just dragging for now)
         """
-        # TODO: I'll probably want to be able to click on a tile to get more
-        # info, etc, so this'll have to be smarter
         self.dragging = True
         self.moved = False
         self.parent.setCursor(QtCore.Qt.ClosedHandCursor)
@@ -667,6 +894,13 @@ class MapScene(QtWidgets.QGraphicsScene):
         if self.moved:
             self.draw_visible_area()
             self.moved = False
+        else:
+            if self.cur_hover:
+                dialog = TileInfoDialog(self.parent, self.cur_hover)
+                dialog.exec()
+
+                # Re-focus the main window
+                self.mainwindow.activateWindow()
 
     def mouseMoveEvent(self, event):
         """
@@ -699,6 +933,7 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Store the world reference
         self.world = world
         self.regions = {}
+        self.cur_hover = None
 
         # Get a list of all regions so we know the count and can draw a
         # QProgressDialog usefully
@@ -962,11 +1197,11 @@ class DataTable(QtWidgets.QWidget):
         self.world_name_label = self.add_row('World')
         self.world_type_label = self.add_row('World Type')
         self.world_extra_label = self.add_row('Extra Info')
-        self.world_filename_label = self.add_row('Filename', selectable=True)
+        self.world_filename_label = self.add_row('Filename')
         self.world_size_label = self.add_row('Size')
 
-        self.region_label = self.add_row('Region', selectable=True)
-        self.tile_label = self.add_row('Coords', selectable=True)
+        self.region_label = self.add_row('Region')
+        self.tile_label = self.add_row('Coords')
 
         self.mat_label = self.add_row('Fore Mat')
         self.matmod_label = self.add_row('Fore Mod')
@@ -981,7 +1216,7 @@ class DataTable(QtWidgets.QWidget):
                 1, 2)
         self.layout.setRowStretch(self.cur_row, 1)
 
-    def add_row(self, label, selectable=False):
+    def add_row(self, label):
         label = QtWidgets.QLabel('{}:'.format(label))
         label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.layout.addWidget(label,
@@ -990,8 +1225,7 @@ class DataTable(QtWidgets.QWidget):
                 )
         data_label = QtWidgets.QLabel()
         data_label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Minimum)
-        if selectable:
-            data_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        data_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.layout.addWidget(data_label, self.cur_row, 1)
         self.cur_row += 1
         return data_label

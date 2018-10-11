@@ -44,10 +44,15 @@ spawn point).  Once on the main screen, the functionality is pretty basic:
 [![Main Window](screenshots/mainwindow.png)](screenshots/mainwindow.png)
 
 The information about the currently-hovered tile will be shown on the lefthand
-side of the screen, which can be resized by dragging on the edge.  You can
-scroll using the scrollbars or by click-and-drag on the map itself.  The
-various layers can be toggled on/off, so if you wanted to check this to find
-any holes in your base's background tile placement, that may be useful, etc.
+side of the screen, which can be resized by dragging on the edge.  To get more
+detail about a tile, click on it to bring up a dialog with the extra details:
+
+[![Tile Info](screenshots/tileinfo.png)](screenshots/tileinfo.png)
+
+You can scroll using the scrollbars or by click-and-drag on the map itself.
+The various layers can be toggled on/off, so if you wanted to check this to
+find any holes in your base's background tile placement, that may be useful,
+etc.
 
 The "Navigate" menu will let you go directly to a specific coordinate, the
 spawn point, the level mech beacon (if one exists), the "current" player
@@ -64,7 +69,6 @@ TODO
 
  - Add NPCs/Enemies/Monsters/Vehicles?
    - (What's a StagehandEntity, I wonder?)
- - Click tiles for full info
  - Zoom
    - Slider
    - `+`/`-` via keyboard
@@ -128,6 +132,10 @@ TODO
  - Handle exceptions gracefully - an easy crash reproduction is to have a
    map open, load it in Starbound, then try to browse around.  Starbound seems
    to shuffle the tree around enough that we can no longer read it.
+ - Space station rendering is a bit wrong; it seems like there's some big
+   room-sized object "decals" which get drawn over the rooms, but it seems to
+   hide all the actual blocks, so possibly they're not actually transparent?
+   Perhaps we're drawing objects in the wrong layer or something, too.
 
 LICENSE
 -------
