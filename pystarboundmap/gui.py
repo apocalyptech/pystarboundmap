@@ -628,8 +628,9 @@ class TileInfoDialog(QtWidgets.QDialog):
     Popup dialog for detailed tile info
     """
 
-    def __init__(self, parent, guitile):
+    def __init__(self, parent, guitile, config):
         super().__init__(parent)
+        self.config = config
         scene = guitile.parent
         world = scene.world
         data = scene.data
@@ -639,7 +640,8 @@ class TileInfoDialog(QtWidgets.QDialog):
         self.setModal(True)
         self.setSizeGripEnabled(True)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setMinimumSize(600, 600)
+        self.setMinimumSize(Config.tileinfo_w, Config.tileinfo_h)
+        self.resize(config.tileinfo_w, config.tileinfo_h)
         self.setWindowTitle(title)
 
         # Layout info
@@ -850,6 +852,15 @@ class TileInfoDialog(QtWidgets.QDialog):
         self.grid.addWidget(scroll, self.cur_row, 1)
         return w
 
+    def close(self):
+        """
+        Handles a close event - used mostly just to save our geometry
+        """
+
+        self.config.tileinfo_w = self.width()
+        self.config.tileinfo_h = self.height()
+        super().close()
+
 class MapScene(QtWidgets.QGraphicsScene):
     """
     Our main scene which renders the map.
@@ -896,7 +907,7 @@ class MapScene(QtWidgets.QGraphicsScene):
             self.moved = False
         else:
             if self.cur_hover:
-                dialog = TileInfoDialog(self.parent, self.cur_hover)
+                dialog = TileInfoDialog(self.parent, self.cur_hover, self.mainwindow.config)
                 dialog.exec()
 
                 # Re-focus the main window

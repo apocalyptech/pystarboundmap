@@ -135,6 +135,8 @@ class Config(object):
     # GUI Vars
     app_w = 1050
     app_h = 700
+    tileinfo_w = 600
+    tileinfo_h = 600
     splitter = None
 
     def __init__(self):
@@ -170,6 +172,10 @@ class Config(object):
                     self.app_w = int(config['gui']['app_w'])
                 if 'app_h' in config['gui']:
                     self.app_h = int(config['gui']['app_h'])
+                if 'tileinfo_w' in config['gui']:
+                    self.tileinfo_w = int(config['gui']['tileinfo_w'])
+                if 'tileinfo_h' in config['gui']:
+                    self.tileinfo_h = int(config['gui']['tileinfo_h'])
                 if 'splitter' in config['gui']:
                     self.splitter = base64.b64decode(config['gui']['splitter'])
         else:
@@ -212,6 +218,8 @@ class Config(object):
         config['gui'] = {}
         config['gui']['app_w'] = str(self.app_w)
         config['gui']['app_h'] = str(self.app_h)
+        config['gui']['tileinfo_w'] = str(self.tileinfo_w)
+        config['gui']['tileinfo_h'] = str(self.tileinfo_h)
         if self.splitter:
             config['gui']['splitter'] = base64.b64encode(self.splitter).decode('utf-8')
         with open(self.config_file, 'w') as df:
