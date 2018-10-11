@@ -810,9 +810,9 @@ class StarboundData(object):
                     '/tiles/slopedmaterialtemplate.config': (24, 0, 32, 8),
 
                     # These two are quite wrong, of course, since they're supposed
-                    # to "join up" properly.  For pipes I chose the straight
-                    # horizontal image, though note that this'll fail for tentacle
-                    # pipes!
+                    # to "join up" properly.  For pipes I chose a tile which is
+                    # the straight horizontal image for most, though note that it's
+                    # a vertical image for tentacle pipes.
                     '/tiles/pipetemplate.config': (68, 36, 76, 44),
                     '/tiles/railtemplate.config': (3, 5, 11, 13),
                 }
