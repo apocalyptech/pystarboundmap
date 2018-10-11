@@ -29,7 +29,6 @@
 import os
 import io
 import re
-import time
 import json
 import mmap
 import struct
@@ -138,32 +137,39 @@ class Material(object):
     def __init__(self, info, path, pakdata, crop_parameters):
         self.info = info
         self.name = info['materialName']
-        df = io.BytesIO(pakdata.get(
-                '{}/{}'.format(path, info['renderParameters']['texture'])
-                ))
-        full_image = Image.open(df)
-        cropped = full_image.crop(crop_parameters)
-        df = io.BytesIO()
-        cropped.save(df, format='png')
-        self.image = QtGui.QPixmap()
-        if not self.image.loadFromData(df.getvalue()):
-            raise Exception('Could not load material {}'.format(self.name))
+        self.path = path
+        self.pakdata = pakdata
+        self.crop_parameters = crop_parameters
 
+        self._image = None
         self._bgimage = None
         self._midimage = None
 
     @property
+    def image(self):
+        """
+        Loads the image dynamically on-demand.
+        """
+        if not self._image:
+            df = io.BytesIO(self.pakdata.get(
+                    '{}/{}'.format(self.path, self.info['renderParameters']['texture'])
+                    ))
+            full_image = Image.open(df)
+            cropped = full_image.crop(self.crop_parameters)
+            df = io.BytesIO()
+            cropped.save(df, format='png')
+            self._image = QtGui.QPixmap()
+            if not self.image.loadFromData(df.getvalue()):
+                self._image = None
+                # TODO: handle these properly
+                raise Exception('Could not load material {}'.format(self.name))
+        return self._image
+
+    @property
     def bgimage(self):
         """
-        Generates a background version of this image.  We're doing it this
-        way because the vast majority of these will never need to be
-        generated on a single run of the app, so why waste time during data
-        load?  Instead we'll incur a slight penalty when the image is first
-        required.  (Though the volume of the data is such that generating
-        them all hardly mattered anyway - all materials and matmods could
-        be generated in about 0.2sec on my PC.)
+        Loads the background version dynamically on-demand.
         """
-
         if not self._bgimage:
             self._bgimage = StarboundData.highlight_pixmap(
                     self.image.copy(), 0, 0, 0, 192,
@@ -173,9 +179,8 @@ class Material(object):
     @property
     def midimage(self):
         """
-        Same story as above, but for a midrange highlight
+        Loads the midrange version dynamically on-demand.
         """
-
         if not self._midimage:
             self._midimage = StarboundData.highlight_pixmap(
                     self.image.copy(), 0, 0, 0, 96,
@@ -192,30 +197,36 @@ class Matmod(object):
     def __init__(self, info, pakdata):
         self.info = info
         self.name = info['modName']
-        df = io.BytesIO(pakdata.get(
-                '/tiles/mods/{}'.format(info['renderParameters']['texture'])
-                ))
-        full_image = Image.open(df)
-        cropped = full_image.crop((0, 8, 16, 24))
-        df = io.BytesIO()
-        cropped.save(df, format='png')
-        self.image = QtGui.QPixmap()
-        if not self.image.loadFromData(df.getvalue()):
-            raise Exception('Could not load material {}'.format(self.name))
+        self.pakdata = pakdata
 
+        self._image = None
         self._bgimage = None
         self._midimage = None
 
     @property
+    def image(self):
+        """
+        Loads the image dynamically on-demand.
+        """
+        if not self._image:
+            df = io.BytesIO(self.pakdata.get(
+                    '/tiles/mods/{}'.format(self.info['renderParameters']['texture'])
+                    ))
+            full_image = Image.open(df)
+            cropped = full_image.crop((0, 8, 16, 24))
+            df = io.BytesIO()
+            cropped.save(df, format='png')
+            self._image = QtGui.QPixmap()
+            if not self._image.loadFromData(df.getvalue()):
+                self._image = None
+                # TODO: Handle this
+                raise Exception('Could not load material {}'.format(self.name))
+        return self._image
+
+    @property
     def bgimage(self):
         """
-        Generates a background version of this image.  We're doing it this
-        way because the vast majority of these will never need to be
-        generated on a single run of the app, so why waste time during data
-        load?  Instead we'll incur a slight penalty when the image is first
-        required.  (Though the volume of the data is such that generating
-        them all hardly mattered anyway - all materials and matmods could
-        be generated in about 0.2sec on my PC.)
+        Loads the background version dynamically on-demand.
         """
 
         if not self._bgimage:
@@ -227,9 +238,8 @@ class Matmod(object):
     @property
     def midimage(self):
         """
-        Same story as above, but for a midrange highlight
+        Loads the midrange version dynamically on-demand.
         """
-
         if not self._midimage:
             self._midimage = StarboundData.highlight_pixmap(
                     self.image.copy(), 0, 0, 0, 45,
@@ -244,18 +254,25 @@ class Plant(object):
     """
 
     def __init__(self, pathname, pakdata):
-        self.image = QtGui.QPixmap()
-        self.image.loadFromData(pakdata.get(pathname))
+        self.pathname = pathname
+        self.pakdata = pakdata
+        self._image = None
         self._hi_image = None
+
+    @property
+    def image(self):
+        """
+        Loads the image dynamically on-demand.
+        """
+        if not self._image:
+            self._image = QtGui.QPixmap()
+            self._image.loadFromData(self.pakdata.get(self.pathname))
+        return self._image
 
     @property
     def hi_image(self):
         """
-        Generates a highlighted version of this image.  We're doing it this
-        way because the vast majority of these will never need to be
-        generated on a single run of the app, so why waste time during data
-        load?  Instead we'll incur a slight penalty when the image is first
-        required.
+        Loads the highlighted version dynamically on-demand.
         """
         if not self._hi_image:
             self._hi_image = StarboundData.highlight_pixmap(
@@ -273,7 +290,8 @@ class SBObjectOrientation(object):
         self.info = info
         self.offset = (0, 0)
         self.anchor = (0, 0)
-        self.image = None
+        self.pakdata = pakdata
+        self._image = None
         self._hi_image = None
 
         # Grab offset, if we can
@@ -299,24 +317,11 @@ class SBObjectOrientation(object):
 
         # Grab the actual image filename and frame info file
         image_file = file_string.split(':')[0]
-        info_frames = self.get_frame(path, image_file, frames, pakdata)
+        self.info_frames = self.get_frame(path, image_file, frames, pakdata)
         if image_file[0] == '/':
-            full_image_file = image_file
+            self.full_image_file = image_file
         else:
-            full_image_file = '{}/{}'.format(path, image_file)
-
-        # Now read in the image and crop
-        df = io.BytesIO(pakdata.get(full_image_file))
-        full_image = Image.open(df)
-        if info_frames:
-            (width, height) = tuple(info_frames['frameGrid']['size'])
-        else:
-            (width, height) = full_image.size
-        cropped = full_image.crop((0, 0, width, height))
-        df = io.BytesIO()
-        cropped.save(df, format='png')
-        self.image = QtGui.QPixmap()
-        self.image.loadFromData(df.getvalue())
+            self.full_image_file = '{}/{}'.format(path, image_file)
 
     def get_frame(self, path, image_file, frames, pakdata):
         """
@@ -338,13 +343,28 @@ class SBObjectOrientation(object):
         return frames[base_filename]
 
     @property
+    def image(self):
+        """
+        Loads the image dynamically on-demand.
+        """
+        if not self._image:
+            df = io.BytesIO(self.pakdata.get(self.full_image_file))
+            full_image = Image.open(df)
+            if self.info_frames:
+                (width, height) = tuple(self.info_frames['frameGrid']['size'])
+            else:
+                (width, height) = full_image.size
+            cropped = full_image.crop((0, 0, width, height))
+            df = io.BytesIO()
+            cropped.save(df, format='png')
+            self._image = QtGui.QPixmap()
+            self._image.loadFromData(df.getvalue())
+        return self._image
+
+    @property
     def hi_image(self):
         """
-        Generates a highlighted version of this image.  We're doing it this
-        way because the vast majority of these will never need to be
-        generated on a single run of the app, so why waste time during data
-        load?  Instead we'll incur a slight penalty when the image is first
-        required.
+        Loads the highlighted version dynamically on-demand.
         """
         if not self._hi_image:
             self._hi_image = StarboundData.highlight_pixmap(
@@ -731,12 +751,10 @@ class StarboundData(object):
             ('^green;XII^white;', '12'),
             ]
 
-    def __init__(self, config, progress_callback=None):
+    def __init__(self, config):
         """
         `config` should be a Config object (which will have the base game
-        installation directory info).  `progress_callback` can be used to
-        update a progress bar, for some visual feedback while we load
-        things.
+        installation directory info).
         """
 
         self.config = config
@@ -745,10 +763,11 @@ class StarboundData(object):
         self.base_player = os.path.join(self.base_storage, 'player')
         self.base_universe = os.path.join(self.base_storage, 'universe')
         self.base_pak = os.path.join(self.base_game, 'assets', 'packed.pak')
-        progress_update_interval = 50
 
         # Read in the data file
-        with open(self.base_pak, 'rb') as pakdf:
+        pakdf = open(self.base_pak, 'rb')
+        self.pakdf = pakdf
+        if pakdf:
 
             paktree = PakTree()
             pakdata = starbound.SBAsset6(pakdf)
@@ -787,8 +806,6 @@ class StarboundData(object):
             self.materials = {}
             obj_list = paktree.get_all_recurs_matching_ext('/tiles', '.material')
             for idx, (obj_path, obj_name) in enumerate(obj_list):
-                if progress_callback and idx % progress_update_interval == 0:
-                    progress_callback()
                 matpath = '{}/{}'.format(obj_path, obj_name)
                 material = json.loads(pakdata.get(matpath))
                 if 'renderTemplate' in material:
@@ -807,57 +824,32 @@ class StarboundData(object):
             # Load in our material mods.
             self.matmods = {}
             for idx, matmod_name in enumerate(paktree.get_all_matching_ext('/tiles/mods', '.matmod')):
-                if progress_callback and idx % progress_update_interval == 0:
-                    progress_callback()
                 # All matmods, at least in the base game, are classicmaterialtemplate
                 matmodpath = '/tiles/mods/{}'.format(matmod_name)
                 matmod = json.loads(pakdata.get(matmodpath))
                 self.matmods[matmod['modId']] = Matmod(matmod, pakdata)
 
             # Load in object data
-            start = time.time()
             self.objects = {}
             obj_list = paktree.get_all_recurs_matching_ext('/objects', '.object')
             for idx, (obj_path, obj_name) in enumerate(obj_list):
-                if progress_callback and idx % progress_update_interval == 0:
-                    progress_callback()
                 obj_full_path = '{}/{}'.format(obj_path, obj_name)
                 obj_json = read_config(pakdata.get(obj_full_path))
                 self.objects[obj_json['objectName']] = SBObject(obj_json, obj_name, obj_path, pakdata)
-            end = time.time()
-            print('Loaded objects in {:.1f} sec'.format(end-start))
 
             # Load in plant data
             # The Entities seem to actually only references these by PNG path, so
             # I guess that's what we'll do too.
-            start = time.time()
             self.plants = {}
             img_list = paktree.get_all_recurs_matching_ext('/plants', '.png')
             for idx, (img_path, img_name) in enumerate(img_list):
-                if progress_callback and idx % progress_update_interval == 0:
-                    progress_callback()
                 img_full_path = '{}/{}'.format(img_path, img_name)
                 self.plants[img_full_path] = Plant(img_full_path, pakdata)
-            end = time.time()
-            print('Loaded plants in {:.1f} sec'.format(end-start))
-
-            #for idx, (weight, system_name) in enumerate(celestial_names['systemNames']):
-            #    if system_name == 'Fribbilus Xax':
-            #        print('Fribbilus Xax found at {}'.format(idx))
-            #        # 493
-            #        break
-            #for idx, (weight, suffix_name) in enumerate(celestial_names['systemSuffixNames']):
-            #    if suffix_name == 'Swarm':
-            #        print('Swarm found at {}'.format(idx))
-            #        # 29
-            #        break
 
             # Load in liquid data
             self.liquids = {}
             liquid_list = paktree.get_all_recurs_matching_ext('/liquids', '.liquid')
             for idx, (liquid_path, liquid_name) in enumerate(liquid_list):
-                if progress_callback and idx % progress_update_interval == 0:
-                    progress_callback()
                 liquid_full_path = '{}/{}'.format(liquid_path, liquid_name)
                 liquid = read_config(pakdata.get(liquid_full_path))
                 self.liquids[liquid['liquidId']] = Liquid(liquid)
@@ -931,6 +923,13 @@ class StarboundData(object):
                     is_temp = match.group(4)
                     extra_uuids[uuid] = (os.path.join(self.base_universe, filename), description)
         return (worlds, extra_uuids)
+
+    def close(self):
+        """
+        Closes our open filehandle
+        """
+        if self.pakdf:
+            self.pakdf.close()
 
     @staticmethod
     def world_name_to_sortable(name):

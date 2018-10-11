@@ -64,12 +64,11 @@ TODO
 
  - Add NPCs/Enemies/Monsters/Vehicles?
    - (What's a StagehandEntity, I wonder?)
- - Highlight tiles for info
-   - Click for full info
+ - Click tiles for full info
  - Zoom
    - Slider
    - `+`/`-` via keyboard
- - Initial resource load / open dialogs don't center on parent window
+ - Initial open dialog doesn't center on parent window
  - Minimap
    - I'll have to see how feasible this is - I'd imagined just a simple
      little thing to show which regions have data and which don't, with
@@ -90,10 +89,9 @@ TODO
  - Support for mods
  - Performance improvements
    - Resource loading:
-     - Could maybe move to loading these on-demand.  The material/matmods
-       themselves only take about 0.2sec to fully load (on my system), so
-       they're not a problem, but objects take nearly 5sec, and then
-       plants add another second or so.
+     - There's probably an unnecessary PNG conversion happening during
+       some of the image loading, though these aren't really problematic
+       and we're only loading 'em on-demand now anyway.
    - Specific tile types
      - Scenes with lots of liquids get bogged down a bit...
    - Map loading/rendering:
@@ -126,10 +124,10 @@ TODO
    disappears on us between runs; I suspect right now the app will just crash
    and the only way to get it to run again would be to manually clear out the
    config file.
- - Either do the on-demand resource loading thing, or make sure that the
-   "cancel" button on the resource-loading progress dialog does the right
-   thing.
  - Should we save the layer toggle states?
+ - Handle exceptions gracefully - an easy crash reproduction is to have a
+   map open, load it in Starbound, then try to browse around.  Starbound seems
+   to shuffle the tree around enough that we can no longer read it.
 
 LICENSE
 -------
