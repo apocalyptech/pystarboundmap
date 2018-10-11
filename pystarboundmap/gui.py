@@ -1947,7 +1947,7 @@ class GUI(QtWidgets.QMainWindow):
         self.setCentralWidget(self.splitter)
 
         # Main window
-        self.setMinimumSize(1050, 700)
+        self.setMinimumSize(Config.app_w, Config.app_h)
         self.resize(self.config.app_w, self.config.app_h)
         self.set_title()
 
