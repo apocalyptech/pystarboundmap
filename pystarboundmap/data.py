@@ -54,7 +54,8 @@ def read_config(config_data):
         # unfortunately that one necessitates some stripping (though stripping
         # is no more CPU-intensive than hardcoding the few instances)
         if line.lstrip()[:2] == '/*':
-            in_comment = True
+            if line.rstrip()[-2:] != '*/':
+                in_comment = True
         else:
             if in_comment:
                 if line.lstrip()[:2] == '*/':
@@ -485,7 +486,8 @@ class PakTree(object):
     def get_all_recurs_matching_ext(self, path, ext):
         """
         Searches recursively through the tree, starting at `path`, to
-        find all files matching the given extension.  Returns a list
+        find all files matching the given extension.  `ext` can either
+        be a single extension, or a set of extensions.  Returns a list
         of tuples - the first element is the *full* path the file is
         found in, and the second is the name of the file
         """
@@ -494,21 +496,24 @@ class PakTree(object):
             if part not in cur:
                 return []
             cur = cur[part]
+        if type(ext) != set:
+            ext = set([ext])
         return self._search_in(path.lower(), cur, ext)
 
-    def _search_in(self, cur_path, node, ext):
+    def _search_in(self, cur_path, node, exts):
         """
         Inner recursive function for `get_all_recurs_matching_ext`
         """
         to_ret = []
         for name, children in node.items():
-            if name.endswith(ext):
+            parts = name.rsplit('.', 1)
+            if len(parts) == 2 and parts[1] in exts:
                 to_ret.append((cur_path, name))
             elif len(children) > 0:
                 to_ret.extend(self._search_in(
                     '{}/{}'.format(cur_path, name),
                     children,
-                    ext,
+                    exts,
                     ))
         return to_ret
 
@@ -819,7 +824,7 @@ class StarboundData(object):
 
             # Load in our materials
             self.materials = {}
-            obj_list = paktree.get_all_recurs_matching_ext('/tiles', '.material')
+            obj_list = paktree.get_all_recurs_matching_ext('/tiles', 'material')
             for idx, (obj_path, obj_name) in enumerate(obj_list):
                 matpath = '{}/{}'.format(obj_path, obj_name)
                 material = json.loads(pakdata.get(matpath))
@@ -845,30 +850,51 @@ class StarboundData(object):
                 matmod = json.loads(pakdata.get(matmodpath))
                 self.matmods[matmod['modId']] = Matmod(matmod, matmodpath, pakdata)
 
-            # Load in object data
+            # Load in object data (this also populates some item names, for container reporting)
+            self.items = {}
             self.objects = {}
-            obj_list = paktree.get_all_recurs_matching_ext('/objects', '.object')
+            obj_list = paktree.get_all_recurs_matching_ext('/objects', 'object')
             for idx, (obj_path, obj_name) in enumerate(obj_list):
                 obj_full_path = '{}/{}'.format(obj_path, obj_name)
                 obj_json = read_config(pakdata.get(obj_full_path))
                 self.objects[obj_json['objectName']] = SBObject(obj_json, obj_name, obj_path, pakdata)
+                self.items[obj_json['objectName']] = StarboundData.strip_colors(obj_json['shortdescription'])
 
             # Load in plant data
             # The Entities seem to actually only references these by PNG path, so
             # I guess that's what we'll do too.
             self.plants = {}
-            img_list = paktree.get_all_recurs_matching_ext('/plants', '.png')
+            img_list = paktree.get_all_recurs_matching_ext('/plants', 'png')
             for idx, (img_path, img_name) in enumerate(img_list):
                 img_full_path = '{}/{}'.format(img_path, img_name)
                 self.plants[img_full_path] = Plant(img_full_path, pakdata)
 
             # Load in liquid data
             self.liquids = {}
-            liquid_list = paktree.get_all_recurs_matching_ext('/liquids', '.liquid')
+            liquid_list = paktree.get_all_recurs_matching_ext('/liquids', 'liquid')
             for idx, (liquid_path, liquid_name) in enumerate(liquid_list):
                 liquid_full_path = '{}/{}'.format(liquid_path, liquid_name)
                 liquid = read_config(pakdata.get(liquid_full_path))
                 self.liquids[liquid['liquidId']] = Liquid(liquid)
+
+            # Load in extra item name mapping (just for reporting container contents)
+            # (have verified that none of these "overwrite" the mappings set up by
+            # the object processing)
+            item_list = paktree.get_all_recurs_matching_ext('/items', set([
+                # There may be some things in here which shouldn't be, but whatever.
+                # Might make more sense to *exclude* extensions instead?  That
+                # list would be a bit shorter: animation, combofinisher,
+                # config, frames, lua, png, weaponability, weaponcolors
+                'activeitem', 'augment', 'back', 'beamaxe', 'chest',
+                'consumable', 'currency', 'flashlight', 'harvestingtool',
+                'head', 'inspectiontool', 'instrument', 'item', 'legs',
+                'liqitem', 'matitem', 'miningtool', 'painttool',
+                'thrownitem', 'tillingtool', 'unlock', 'wiretool',
+                ]))
+            for item_path, item_name in item_list:
+                item_full_path = '{}/{}'.format(item_path, item_name)
+                item = read_config(pakdata.get(item_full_path))
+                self.items[item['itemName']] = StarboundData.strip_colors(item['shortdescription'])
 
     def get_all_players(self):
         """

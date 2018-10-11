@@ -136,7 +136,6 @@ TODO
    room-sized object "decals" which get drawn over the rooms, but it seems to
    hide all the actual blocks, so possibly they're not actually transparent?
    Perhaps we're drawing objects in the wrong layer or something, too.
- - Collect an item-ID-to-real-name mapping, for reporting container contents
 
 LICENSE
 -------

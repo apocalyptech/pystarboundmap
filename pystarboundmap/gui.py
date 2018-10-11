@@ -734,14 +734,14 @@ class TileInfoDialog(QtWidgets.QDialog):
                 for item in entity['items']:
                     if item and 'content' in item:
                         content = item['content']
-                        if content['count'] > 1:
-                            prefix = '{}x '.format(content['count'])
+                        if 'parameters' in content and 'shortdescription' in content['parameters']:
+                            suffix = ' ({}: {})'.format(data.items[content['name']], content['parameters']['shortdescription'])
                         else:
-                            prefix = ''
+                            suffix = ' ({})'.format(data.items[content['name']])
                         itemlist.append((
                             content['name'],
                             content['count'],
-                            '{}{}'.format(prefix, content['name']),
+                            '{}x {}{}'.format(content['count'], content['name'], suffix),
                             ))
                 if len(itemlist) > 0:
                     self.add_list_data_row(
