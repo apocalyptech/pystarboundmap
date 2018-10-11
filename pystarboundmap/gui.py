@@ -639,7 +639,7 @@ class TileInfoDialog(QtWidgets.QDialog):
         self.setModal(True)
         self.setSizeGripEnabled(True)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(600, 600)
         self.setWindowTitle(title)
 
         # Layout info
