@@ -112,32 +112,32 @@ TODO
      - Keep a "history" of loaded Regions and only expire them after
        they haven't been used in N redraws?  That way, scrolling back
        to a previously-visited area would be less likely to have to re-load.
- - Fancier rendering?  (base map materials have "edges" which we completely
-   ignore at the moment.  Would presumably increase render times...
-   - Material edges
-   - Platforms, etc, joining up properly
+ - Rendering improvements
+   - Parsing and using render templates (or at the very least making our
+     own internal representation of them) would allow materials to have
+     proper "edges", for platforms/pipes/rails to link up properly, etc.
    - Liquid levels
- - Properly handle on/off items (light sources), open/closed doors, etc
- - Properly handle coloration of objects/tiles?
- - Randomize tiles w/ multiple options (dirt, etc, seems to be randomly
-   assigned from four or five options.  The randomization is fixed-seed
-   inside Starbound itself, and I highly doubt I'd be able to get it the
-   same, but maps would probably still look nicer with them randomized)
- - Parse render templates properly
- - Make sure we gracefully handle situations where the Starbound install dir
-   disappears on us between runs; I suspect right now the app will just crash
-   and the only way to get it to run again would be to manually clear out the
-   config file.
- - Should we save the layer toggle states?
- - Handle exceptions gracefully - an easy crash reproduction is to have a
-   map open, load it in Starbound, then try to browse around.  Starbound seems
-   to shuffle the tree around enough that we can no longer read it.
- - Space station rendering is a bit wrong; it seems like there's some big
-   room-sized object "decals" which get drawn over the rooms, but it seems to
-   hide all the actual blocks, so possibly they're not actually transparent?
-   Perhaps we're drawing objects in the wrong layer or something, too.
-   - Really what it comes down to is that we should be obeying the "renderLayer"
-     parameter, which can vary from object to object.
+   - on/off items (light sources), open/closed doors, etc
+   - coloration of objects/tiles
+   - "flip" parameter
+   - Randomize tiles w/ multiple options (dirt, etc, seems to be randomly
+     assigned from four or five options.  The randomization is fixed-seed
+     inside Starbound itself, and I highly doubt I'd be able to get it the
+     same, but maps would probably still look nicer with them randomized)
+   - Layer improvements - right now we're right enough *most* of the time,
+     but your own space station is one which doesn't render right at all.
+     Should really figure out Starbound's native layer priority and use
+     objects' "renderLayer" property.
+ - Handle exceptions gracefully
+   - An easy crash reproduction is to have a map open, load it in Starbound,
+     then try to browse around.  Starbound seems to shuffle the tree around
+     enough that we can no longer read it.
+   - Make sure we gracefully handle situations where the Starbound install dir
+     disappears on us between runs; I suspect right now the app will just crash
+     and the only way to get it to run again would be to manually clear out the
+     config file.
+ - Should we save the layer toggle states between runs
+ - Option to visually highlight where objects/plants are anchored
 
 LICENSE
 -------
