@@ -212,7 +212,8 @@ class Config(object):
         config['gui'] = {}
         config['gui']['app_w'] = str(self.app_w)
         config['gui']['app_h'] = str(self.app_h)
-        config['gui']['splitter'] = base64.b64encode(self.splitter).decode('utf-8')
+        if self.splitter:
+            config['gui']['splitter'] = base64.b64encode(self.splitter).decode('utf-8')
         with open(self.config_file, 'w') as df:
             config.write(df)
 
