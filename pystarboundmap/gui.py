@@ -737,9 +737,14 @@ class TileInfoDialog(QtWidgets.QDialog):
                     if item and 'content' in item:
                         content = item['content']
                         if 'parameters' in content and 'shortdescription' in content['parameters']:
-                            suffix = ' ({}: {})'.format(data.items[content['name']], content['parameters']['shortdescription'])
-                        else:
+                            if content['name'] in data.items:
+                                suffix = ' ({}: {})'.format(data.items[content['name']], content['parameters']['shortdescription'])
+                            else:
+                                suffix = ' ({})'.format(content['parameters']['shortdescription'])
+                        elif content['name'] in data.items:
                             suffix = ' ({})'.format(data.items[content['name']])
+                        else:
+                            suffix = ''
                         itemlist.append((
                             content['name'],
                             content['count'],

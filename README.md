@@ -138,6 +138,13 @@ TODO
      config file.
  - Should we save the layer toggle states between runs
  - Option to visually highlight where objects/plants are anchored
+ - Read in codex files, to report the real name in container contents.  This
+   will require actually lexing the config files in `read_config`, though,
+   instead of just doing the poor-man's processing we're doing now.  The codex
+   files feature multiline strings (without anything but a dangling quote to
+   distinguish them), sometimes feature escaped quotes inside the text, and
+   sometimes feature a double-slash, which gets interpreted as a comment.  Not
+   worth it for me, at the moment.
 
 LICENSE
 -------
