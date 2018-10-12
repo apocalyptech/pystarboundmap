@@ -723,7 +723,7 @@ class TileInfoDialog(QtWidgets.QDialog):
             object_label = 'Object{}'.format(show_index)
             self.add_text_row(
                     object_label,
-                    '<tt>{}</tt> ({})'.format(obj_name, obj_data.info['shortdescription']),
+                    '<tt>{}</tt> ({})'.format(obj_name, StarboundData.strip_colors(obj_data.info['shortdescription'])),
                     )
             self.add_text_data('<tt>{}</tt>'.format(obj_data.full_path))
             self.cur_row += 1
