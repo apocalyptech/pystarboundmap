@@ -44,15 +44,20 @@ spawn point).  Once on the main screen, the functionality is pretty basic:
 [![Main Window](screenshots/mainwindow.png)](screenshots/mainwindow.png)
 
 The information about the currently-hovered tile will be shown on the lefthand
-side of the screen, which can be resized by dragging on the edge.  To get more
-detail about a tile, click on it to bring up a dialog with the extra details:
+side of the screen, which can be resized by dragging on the edge.  You can
+scroll using the scrollbars or by click-and-drag on the map itself.  The
+various layers can be toggled on/off, so if you wanted to check for holes in
+the background tiles of your home base, or something, that may be useful.
+There are also toggles to draw the background tiles much lighter, so they're
+easier to see, and toggles to show the "anchor" points for both objects and
+plants.  This is seen in the screenshot, where the object anchor points are
+in blue.  Plants will be in green.
+
+To get more detail about a tile, click on it to bring up a dialog with the
+extra details:
 
 [![Tile Info](screenshots/tileinfo.png)](screenshots/tileinfo.png)
 
-You can scroll using the scrollbars or by click-and-drag on the map itself.
-The various layers can be toggled on/off, so if you wanted to check this to
-find any holes in your base's background tile placement, that may be useful,
-etc.
 
 The "Navigate" menu will let you go directly to a specific coordinate, the
 spawn point, the level mech beacon (if one exists), the "current" player
@@ -120,6 +125,9 @@ TODO
    - on/off items (light sources), open/closed doors, etc
    - coloration of objects/tiles
    - "flip" parameter
+   - crop status
+     - Unrelated to rendering specifically, but we could probably report
+       on crop progress in the tile info dialog.
    - Randomize tiles w/ multiple options (dirt, etc, seems to be randomly
      assigned from four or five options.  The randomization is fixed-seed
      inside Starbound itself, and I highly doubt I'd be able to get it the
@@ -137,7 +145,6 @@ TODO
      and the only way to get it to run again would be to manually clear out the
      config file.
  - Should we save the layer toggle states between runs
- - Option to visually highlight where objects/plants are anchored
  - Read in codex files, to report the real name in container contents.  This
    will require actually lexing the config files in `read_config`, though,
    instead of just doing the poor-man's processing we're doing now.  The codex

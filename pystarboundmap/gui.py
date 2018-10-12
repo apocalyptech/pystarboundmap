@@ -168,8 +168,19 @@ class GUITile(QtWidgets.QGraphicsRectItem):
     Hoverable area which the user can click on for info, etc.
     """
 
+    (BRUSH_NONE,
+        BRUSH_NORMAL,
+        BRUSH_PLANT,
+        BRUSH_OBJECT,
+        BRUSH_HOVER) = range(5)
+
     def __init__(self, parent, tile, x, y, region, gui_x, gui_y, layer_toggles):
         super().__init__()
+        self.hovered = False
+        self.highlight_objects = layer_toggles.object_anchors_toggle.isChecked()
+        self.highlight_plants = layer_toggles.plant_anchors_toggle.isChecked()
+        self.plants = []
+        self.objects = []
         self.parent = parent
         self.tile = tile
         self.x = x
@@ -178,13 +189,11 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         self.gui_x = gui_x
         self.gui_y = gui_y
         self.setAcceptHoverEvents(True)
-        self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
-        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        self.last_brush = GUITile.BRUSH_NONE
+        self.set_default_brush()
         self.setRect(0, 0, 8, 8)
         self.setPos(gui_x, gui_y)
         self.setZValue(Constants.z_overlay)
-        self.plants = []
-        self.objects = []
 
         # Convenience vars
         materials = self.parent.data.materials
@@ -279,6 +288,8 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         objects
         """
         self.plants.append((desc, obj_list))
+        if len(self.plants) == 1:
+            self.set_default_brush()
 
     def add_object(self, obj_data, obj_name, obj_orientation, qpmi, entity):
         """
@@ -286,6 +297,8 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         and QGraphicsPixmapItem
         """
         self.objects.append((obj_data, obj_name, obj_orientation, qpmi, entity))
+        if len(self.objects) == 1:
+            self.set_default_brush()
 
     def hoverEnterEvent(self, event=None):
         data_table = self.parent.mainwindow.data_table
@@ -293,6 +306,7 @@ class GUITile(QtWidgets.QGraphicsRectItem):
         matmods = self.parent.data.matmods
         liquids = self.parent.data.liquids
         self.parent.cur_hover = self
+        self.hovered = True
 
         data_table.set_region(self.region.rx, self.region.ry)
         data_table.set_tile(self.x, self.y)
@@ -356,12 +370,13 @@ class GUITile(QtWidgets.QGraphicsRectItem):
 
         # TODO: Might want to pre-brighten our images and swap 'em out.  Or
         # at least do so for objects, so we could highlight the whole thing.
+        self.last_brush = GUITile.BRUSH_HOVER
         self.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255, 128)))
         self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
 
     def hoverLeaveEvent(self, event=None):
-        self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
-        self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        self.hovered = False
+        self.set_default_brush()
 
         # Restore object images
         for (obj_data, obj_name, obj_orientation, qpmi, _) in self.objects:
@@ -405,9 +420,40 @@ class GUITile(QtWidgets.QGraphicsRectItem):
                 image = self.parent.data.matmods[self.tile.background_mod].bgimage
             self.mod_background.setPixmap(image)
 
+    def set_default_brush(self):
+        """
+        Sets our default (non-hovered) brush/pen state.  Changing this is
+        expensive, which is why we're keeping track of the brush state with
+        `last_brush` rather than blindly updating.
+        """
+        if not self.hovered:
+            if self.highlight_objects and len(self.objects) > 0:
+                if self.last_brush != GUITile.BRUSH_OBJECT:
+                    self.setBrush(QtGui.QBrush(QtGui.QColor(150, 150, 255, 200)))
+                    self.setPen(QtGui.QPen(QtGui.QColor(190, 190, 255, 255)))
+                    self.last_brush = GUITile.BRUSH_OBJECT
+            elif self.highlight_plants and len(self.plants) > 0:
+                if self.last_brush != GUITile.BRUSH_PLANT:
+                    self.setBrush(QtGui.QBrush(QtGui.QColor(150, 255, 150, 200)))
+                    self.setPen(QtGui.QPen(QtGui.QColor(190, 255, 190, 255)))
+                    self.last_brush = GUITile.BRUSH_PLANT
+            else:
+                if self.last_brush != GUITile.BRUSH_NORMAL:
+                    self.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 0)))
+                    self.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+                    self.last_brush = GUITile.BRUSH_NORMAL
+
     def toggle_liquids(self, checked):
         if self.liquid:
             self.liquid.setVisible(checked)
+
+    def toggle_object_anchors(self, checked):
+        self.highlight_objects = checked
+        self.set_default_brush()
+
+    def toggle_plant_anchors(self, checked):
+        self.highlight_plants = checked
+        self.set_default_brush()
 
 class GUIRegion(object):
     """
@@ -616,12 +662,26 @@ class GUIRegion(object):
         for obj in self.objects:
             obj.setVisible(checked)
 
+    def toggle_object_anchors(self, checked):
+        """
+        Toggle object anchors
+        """
+        for tile in self.tiles:
+            tile.toggle_object_anchors(checked)
+
     def toggle_plants(self, checked):
         """
         Toggle plants
         """
         for plant in self.plants:
             plant.setVisible(checked)
+
+    def toggle_plant_anchors(self, checked):
+        """
+        Toggle plant anchors
+        """
+        for tile in self.tiles:
+            tile.toggle_plant_anchors(checked)
 
 class TileInfoDialog(QtWidgets.QDialog):
     """
@@ -1166,12 +1226,26 @@ class MapScene(QtWidgets.QGraphicsScene):
         for region in self.loaded_regions:
             self.regions[region].toggle_objects(checked)
 
+    def toggle_object_anchors(self, checked):
+        """
+        Toggle object anchors
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_object_anchors(checked)
+
     def toggle_plants(self, checked):
         """
         Toggle plants
         """
         for region in self.loaded_regions:
             self.regions[region].toggle_plants(checked)
+
+    def toggle_plant_anchors(self, checked):
+        """
+        Toggle plant anchors
+        """
+        for region in self.loaded_regions:
+            self.regions[region].toggle_plant_anchors(checked)
 
 class MapArea(QtWidgets.QGraphicsView):
     """
@@ -1324,10 +1398,20 @@ class LayerToggles(QtWidgets.QWidget):
                 self.maingui.scene.toggle_liquids,
                 )
         self.objects_toggle = self.add_row('Objects',
-                self.maingui.scene.toggle_objects,
+                self.toggle_objects,
+                )
+        self.object_anchors_toggle = self.add_row('Highlight Anchors',
+                self.maingui.scene.toggle_object_anchors,
+                indent=True,
+                default=False,
                 )
         self.plants_toggle = self.add_row('Plants',
-                self.maingui.scene.toggle_plants,
+                self.toggle_plants,
+                )
+        self.plant_anchors_toggle = self.add_row('Highlight Anchors',
+                self.maingui.scene.toggle_plant_anchors,
+                indent=True,
+                default=False,
                 )
 
     def add_row(self, label_text, callback, indent=False, default=True):
@@ -1376,6 +1460,30 @@ class LayerToggles(QtWidgets.QWidget):
         else:
             self.current_back_mod_val = self.back_mod_toggle.isChecked()
             self.back_mod_toggle.setChecked(False)
+
+    def toggle_objects(self, checked):
+        """
+        Toggles objects
+        """
+        self.maingui.scene.toggle_objects(checked)
+        self.object_anchors_toggle.setEnabled(checked)
+        if checked:
+            self.object_anchors_toggle.setChecked(self.current_object_anchors_val)
+        else:
+            self.current_object_anchors_val = self.object_anchors_toggle.isChecked()
+            self.object_anchors_toggle.setChecked(False)
+
+    def toggle_plants(self, checked):
+        """
+        Toggles plants
+        """
+        self.maingui.scene.toggle_plants(checked)
+        self.plant_anchors_toggle.setEnabled(checked)
+        if checked:
+            self.plant_anchors_toggle.setChecked(self.current_plant_anchors_val)
+        else:
+            self.current_plant_anchors_val = self.plant_anchors_toggle.isChecked()
+            self.plant_anchors_toggle.setChecked(False)
 
 class RegionLoadingNotifier(QtWidgets.QWidget):
     """
