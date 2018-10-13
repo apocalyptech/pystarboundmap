@@ -1054,15 +1054,22 @@ class MapScene(QtWidgets.QGraphicsScene):
         new_x = (x*8)+4
         # TODO: this y coord may be slightly off
         new_y = (self.world.height*8) - (y*8) - 4
+        # Okay, seems we don't actually need this here, for what we're using
+        # it for, at least.  May want to rename or refactor these a bit so
+        # that these two functions are analagous, 'cause they technically do
+        # slightly different things now.
+        #(scene_x, scene_y) = self.mainwindow.get_zoom_transform().map(new_x, new_y)
+        #return (scene_x, scene_y)
         return (new_x, new_y)
 
     def scene_to_ingame(self, x, y):
         """
         Converts scene coordinates (x, y) to in-game coordinates.
         """
-        new_x = x//8
+        (scene_x, scene_y) = self.mainwindow.get_inverted_zoom_transform().map(x, y)
+        new_x = scene_x//8
         # TODO: this y coord may be slightly off
-        new_y = ((self.world.height*8) - y)//8
+        new_y = ((self.world.height*8) - scene_y)//8
         return (new_x, new_y)
 
     def centered_tile(self):
@@ -1109,12 +1116,12 @@ class MapScene(QtWidgets.QGraphicsScene):
         # Figure out what regions we should be showing
         horiz_width = self.hbar.pageStep()
         gui_start_x = self.hbar.value()
-        vert_width = self.vbar.pageStep()
+        vert_height = self.vbar.pageStep()
         gui_start_y = self.vbar.value()
         (game_min_x, game_max_y) = self.scene_to_ingame(gui_start_x, gui_start_y)
         (game_max_x, game_min_y) = self.scene_to_ingame(
                 gui_start_x + horiz_width,
-                gui_start_y + vert_width,
+                gui_start_y + vert_height,
                 )
         min_rx = game_min_x//32 - 1
         max_rx = game_max_x//32 + 1
@@ -1299,12 +1306,6 @@ class DataTable(QtWidgets.QWidget):
         self.back_matmod_label = self.add_row('Back Mod')
         self.liquid_label = self.add_row('Liquid')
         self.entities_label = self.add_row('Entities')
-
-        # Spacer at the bottom so that the other cells don't expand
-        self.layout.addWidget(QtWidgets.QLabel(),
-                self.cur_row, 0,
-                1, 2)
-        self.layout.setRowStretch(self.cur_row, 1)
 
     def add_row(self, label):
         label = QtWidgets.QLabel('{}:'.format(label))
@@ -1960,6 +1961,16 @@ class GUI(QtWidgets.QMainWindow):
         self.data = None
         self.loaded_filename = None
         self.navigation_actions = []
+        self.zoom_levels = []
+        # 0.5 scaling just doesn't perform well enough right now
+        #for scale in [0.5, 1, 2, 3, 4]:
+        for scale in [1, 2, 3, 4]:
+            t = QtGui.QTransform()
+            if scale != 1:
+                t.scale(scale, scale)
+            (inverted, _) = t.inverted()
+            self.zoom_levels.append((scale, t, inverted))
+        self.cur_zoom = 0
         self.initUI()
 
         # Show ourselves
@@ -2004,6 +2015,11 @@ class GUI(QtWidgets.QMainWindow):
         editmenu = menubar.addMenu('&Edit')
         editmenu.addAction('&Settings', self.action_settings, 'Ctrl+S')
 
+        # View Menu
+        viewmenu = menubar.addMenu('&View')
+        viewmenu.addAction('Zoom &In', self.action_zoom_in, '+')
+        viewmenu.addAction('Zoom &Out', self.action_zoom_out, '-')
+
         # Nagivate Menu
         self.navmenu = menubar.addMenu('&Navigate')
         self.goto_menu = self.navmenu.addAction('&Go To...', self.action_goto, 'Ctrl+G')
@@ -2027,7 +2043,40 @@ class GUI(QtWidgets.QMainWindow):
         self.data_table = DataTable(self)
         vbox.addWidget(self.data_table, 0, QtCore.Qt.AlignLeft)
 
-        # Spacer inbetween DataTable and layer toggles
+        # Spacer inbetween DataTable and zoom
+        line = QtWidgets.QFrame()
+        line.setFrameShape(QtWidgets.QFrame.HLine)
+        line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        vbox.addWidget(line)
+
+        # Zoom Widget
+        w = QtWidgets.QWidget()
+        zoom_grid = QtWidgets.QGridLayout()
+        zoom_grid.addWidget(QtWidgets.QLabel('<b>Zoom:</b>'), 0, 0, 2, 1)
+        self.zoom_widget = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
+        self.zoom_widget.setMinimum(0)
+        self.zoom_widget.setMaximum(len(self.zoom_levels)-1)
+        self.zoom_widget.setValue(self.cur_zoom)
+        # This actually looks a bit better without the ticks, since the
+        # labels don't exactly line up
+        #self.zoom_widget.setTickPosition(QtWidgets.QSlider.TicksBelow)
+        #self.zoom_widget.setTickInterval(1)
+        self.zoom_widget.setTracking(False)
+        self.zoom_widget.valueChanged.connect(self.action_set_zoom)
+        zoom_grid.addWidget(self.zoom_widget, 0, 1, 1, len(self.zoom_levels))
+        for idx, (level, _, _) in enumerate(self.zoom_levels):
+            label = QtWidgets.QLabel('{}x'.format(level), self)
+            if idx == 0:
+                align = QtCore.Qt.AlignLeft
+            elif idx == len(self.zoom_levels) - 1:
+                align = QtCore.Qt.AlignRight
+            else:
+                align = QtCore.Qt.AlignCenter
+            zoom_grid.addWidget(label, 1, idx+1, align | QtCore.Qt.AlignTop)
+        w.setLayout(zoom_grid)
+        vbox.addWidget(w)
+
+        # Spacer inbetween zoom and layer toggles
         line = QtWidgets.QFrame()
         line.setFrameShape(QtWidgets.QFrame.HLine)
         line.setFrameShadow(QtWidgets.QFrame.Sunken)
@@ -2063,6 +2112,51 @@ class GUI(QtWidgets.QMainWindow):
         self.setMinimumSize(Config.app_w, Config.app_h)
         self.resize(self.config.app_w, self.config.app_h)
         self.set_title()
+
+    def action_set_zoom(self, value):
+        """
+        Sets our zoom value explicitly
+        """
+        if value >= 0 and value < len(self.zoom_levels) and value != self.cur_zoom:
+            self.cur_zoom = value
+            self.apply_zoom()
+
+    def action_zoom_out(self):
+        """
+        Zooms out by a step (if possible)
+        """
+        if self.cur_zoom > 0:
+            self.cur_zoom -= 1
+            self.zoom_widget.setValue(self.cur_zoom)
+            self.apply_zoom()
+
+    def action_zoom_in(self):
+        """
+        Zooms in by a step (if possible)
+        """
+        if self.cur_zoom < len(self.zoom_levels) - 1:
+            self.cur_zoom += 1
+            self.zoom_widget.setValue(self.cur_zoom)
+            self.apply_zoom()
+
+    def apply_zoom(self):
+        """
+        Applies our current zoom level
+        """
+        self.maparea.setTransform(self.zoom_levels[self.cur_zoom][1])
+        self.scene.draw_visible_area()
+
+    def get_zoom_transform(self):
+        """
+        Returns our current zoom transformation
+        """
+        return self.zoom_levels[self.cur_zoom][1]
+
+    def get_inverted_zoom_transform(self):
+        """
+        Returns our current inverted zoom transformation
+        """
+        return self.zoom_levels[self.cur_zoom][2]
 
     def set_title(self):
         """

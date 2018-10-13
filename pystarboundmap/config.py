@@ -134,7 +134,7 @@ class Config(object):
 
     # GUI Vars
     app_w = 1050
-    app_h = 700
+    app_h = 800
     tileinfo_w = 600
     tileinfo_h = 600
     splitter = None

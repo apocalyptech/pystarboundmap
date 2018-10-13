@@ -1,8 +1,23 @@
 Python Starbound Mapper
 -----------------------
 
-Yet another Starbound mapper!  This is in pretty early stages, but is at
-least pretty functional as a bare-bones map viewer.
+Yet another Starbound mapper!
+
+This project intends to be a reasonably basic Starbound map viewer, focusing on
+a few simple map introspection tasks, rather than on 100% accurate map
+rendering.  The kinds of tasks that I'd wanted out of the program were: looking
+for interesting areas to head while spelunking; checking my home base for
+"holes" in the background tiles; clicking on tiles to get some detailed
+information such as the images being used, etc.  The app is nearing what I'd
+consider "feature complete" for my own personal wishlist in a Starbound map
+viewer.
+
+A quick glance at the screenshots below will show that the blocks are rendered
+as simple squares rather than with all their borders, that platforms don't link
+up with each other, and that objects aren't currently rendered in their correct
+orientations (or even variations, in most cases).  It doesn't yet attempt to do
+correct color tinting or the like, either.  I have those kinds of things on my
+TODO, but they are honestly low priority for me.
 
 Uses:
  - Python 3
@@ -45,13 +60,15 @@ spawn point).  Once on the main screen, the functionality is pretty basic:
 
 The information about the currently-hovered tile will be shown on the lefthand
 side of the screen, which can be resized by dragging on the edge.  You can
-scroll using the scrollbars or by click-and-drag on the map itself.  The
-various layers can be toggled on/off, so if you wanted to check for holes in
-the background tiles of your home base, or something, that may be useful.
+scroll using the scrollbars or by click-and-drag on the map itself.  You can
+zoom in using the slider, or with the keyboard shortcuts `+` and `-`.
+
+The various layers can be toggled on/off, so if you wanted to check for holes
+in the background tiles of your home base, or something, that may be useful.
 There are also toggles to draw the background tiles much lighter, so they're
 easier to see, and toggles to show the "anchor" points for both objects and
-plants.  This is seen in the screenshot, where the object anchor points are
-in blue.  Plants will be in green.
+plants.  This is seen in the screenshot, where the object anchor points are in
+blue.  Plants will be in green.
 
 To get more detail about a tile, click on it to bring up a dialog with the
 extra details:
@@ -74,9 +91,6 @@ TODO
 
  - Add NPCs/Enemies/Monsters/Vehicles?
    - (What's a StagehandEntity, I wonder?)
- - Zoom
-   - Slider
-   - `+`/`-` via keyboard
  - Initial open dialog doesn't center on parent window
  - Minimap
    - I'll have to see how feasible this is - I'd imagined just a simple
@@ -117,6 +131,12 @@ TODO
      - Keep a "history" of loaded Regions and only expire them after
        they haven't been used in N redraws?  That way, scrolling back
        to a previously-visited area would be less likely to have to re-load.
+     - One thing which is slower than I'd like is the expiration of
+       Regions.  It's noticeable at 1x zoom, but my experiments with
+       going to 0.5x zoom produced some really pronounced pauses.
+       Should see if there's a way to speed that up.  (Though the region
+       "history" in the point above would at least delay those slowdowns
+       for a bit.)
  - Rendering improvements
    - Parsing and using render templates (or at the very least making our
      own internal representation of them) would allow materials to have
@@ -144,7 +164,7 @@ TODO
      disappears on us between runs; I suspect right now the app will just crash
      and the only way to get it to run again would be to manually clear out the
      config file.
- - Should we save the layer toggle states between runs
+ - Should we save the layer toggle states (and zoom level) between runs?
  - Read in codex files, to report the real name in container contents.  This
    will require actually lexing the config files in `read_config`, though,
    instead of just doing the poor-man's processing we're doing now.  The codex
@@ -152,6 +172,8 @@ TODO
    distinguish them), sometimes feature escaped quotes inside the text, and
    sometimes feature a double-slash, which gets interpreted as a comment.  Not
    worth it for me, at the moment.
+ - Would be nice if the zoom kept the map view centered on the mouse
+   pointer, when using the keyboard zoom shortcuts
 
 LICENSE
 -------
