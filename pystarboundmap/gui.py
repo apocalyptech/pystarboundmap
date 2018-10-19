@@ -2119,6 +2119,7 @@ class GUI(QtWidgets.QMainWindow):
 
         self.app = app
         self.config = config
+        self.filename_arg = filename
 
         # Initialization stuff
         self.world = None
@@ -2141,6 +2142,18 @@ class GUI(QtWidgets.QMainWindow):
         # Show ourselves
         self.show()
 
+        # Launch our initial dialogs.  If we don't have at least a *little*
+        # bit of delay on this, the dialog won't be *properly* modal, and
+        # won't necessarily center on the main window.  `msec` values as
+        # low as 3 seem to work just fine on my system
+        QtCore.QTimer.singleShot(5, self.initial_dialogs)
+
+    def initial_dialogs(self):
+        """
+        Show our initial dialogs (or, if provided with a filename argument,
+        load that file)
+        """
+
         # If we have Starbound data, load it.
         if self.config.starbound_data_dir:
             self.load_data()
@@ -2161,8 +2174,8 @@ class GUI(QtWidgets.QMainWindow):
         # If we've been passed a filename, load it.  Otherwise, open the
         # loading dialog
         if self.data:
-            if filename:
-                self.load_map(filename)
+            if self.filename_arg:
+                self.load_map(self.filename_arg)
             else:
                 self.action_open_name()
 

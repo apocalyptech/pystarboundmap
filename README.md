@@ -95,7 +95,6 @@ TODO
 
  - Add NPCs/Enemies/Monsters/Vehicles?
    - (What's a StagehandEntity, I wonder?)
- - Initial open dialog doesn't center on parent window
  - Minimap
    - I'll have to see how feasible this is - I'd imagined just a simple
      little thing to show which regions have data and which don't, with
