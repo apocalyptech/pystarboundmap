@@ -1226,11 +1226,17 @@ class MapScene(QtWidgets.QGraphicsScene):
             region_loading.update(idx)
 
         # Unload regions which are too far out
+        regions_to_unload = []
         for region in list(self.loaded_regions):
             if region not in valid_regions:
-                #print('Unloading region {}'.format(region))
-                self.regions[region].unload()
-                self.loaded_regions.remove(region)
+                regions_to_unload.append(region)
+
+        region_loading.start(len(regions_to_unload), label='Unloading Regions')
+        for idx, region in enumerate(regions_to_unload):
+            #print('Unloading region {}'.format(region))
+            self.regions[region].unload()
+            self.loaded_regions.remove(region)
+            region_loading.update(idx)
 
         # Finish our progress bar
         region_loading.finish()
@@ -1571,6 +1577,7 @@ class RegionLoadingNotifier(QtWidgets.QWidget):
         self.layout = QtWidgets.QGridLayout()
         self.setLayout(self.layout)
 
+        self.label = 'Loading Regions'
         self.text_label = QtWidgets.QLabel('', self)
         self.layout.addWidget(self.text_label, 0, 0)
         self.text_label.hide()
@@ -1582,16 +1589,17 @@ class RegionLoadingNotifier(QtWidgets.QWidget):
         self.num_regions = 1
         self.bar.hide()
 
-    def start(self, num_regions):
+    def start(self, num_regions, label='Loading Regions'):
         """
         Starts us off
         """
 
         self.num_regions = num_regions
+        self.label = label
         if num_regions > 0:
             self.bar.setRange(0, num_regions)
             self.bar.setValue(0)
-            self.text_label.setText('Loading Regions: 0/{}'.format(num_regions))
+            self.text_label.setText('{}: 0/{}'.format(self.label, num_regions))
             self.text_label.show()
             self.bar.show()
 
@@ -1600,7 +1608,7 @@ class RegionLoadingNotifier(QtWidgets.QWidget):
         Updates with a new value
         """
         self.bar.setValue(value)
-        self.text_label.setText('Loading Regions: {}/{}'.format(value, self.num_regions))
+        self.text_label.setText('{}: {}/{}'.format(self.label, value, self.num_regions))
 
     def finish(self):
         """
