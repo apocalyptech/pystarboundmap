@@ -165,6 +165,7 @@ TODO
      and the only way to get it to run again would be to manually clear out the
      config file.
  - Should we save the layer toggle states (and zoom level) between runs?
+   Also the "show biome/dungeon details" checkbox on the load dialog?
  - Read in codex files, to report the real name in container contents.  This
    will require actually lexing the config files in `read_config`, though,
    instead of just doing the poor-man's processing we're doing now.  The codex
@@ -174,6 +175,13 @@ TODO
    worth it for me, at the moment.
  - Would be nice if the zoom kept the map view centered on the mouse
    pointer, when using the keyboard zoom shortcuts
+ - Could use a progress bar for when reading world information on the open
+   screen.  First-time reads on a player with a lot of worlds can spend a lot
+   of time seemingly-frozen.
+ - Should probably add the biome/dungeon information to the clickable tile
+   details dialog, but that's gonna take up an awful lot of room.  There should
+   maybe instead be a master "world info" dialog, and we could take that info
+   out of the tile info dialog altogether.
 
 LICENSE
 -------

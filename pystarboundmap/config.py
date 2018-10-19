@@ -57,11 +57,13 @@ class WorldNameCache(object):
     dialog is open.
     """
 
-    cache_ver = 2
+    cache_ver = 3
     WorldName = namedtuple('WorldName', [
         'sort_name',
         'world_name',
         'extra_desc',
+        'biomes',
+        'dungeons',
         ])
 
     def __init__(self, filename):
@@ -77,25 +79,47 @@ class WorldNameCache(object):
                         and 'mapping' in parsed_file):
                     self.mapping = parsed_file['mapping']
 
-    def register_planet(self, path, world_name, world_type, biome_types, sort_name):
+    def register_planet(self, path, world_name, world_type, biome_types, sort_name, world_obj):
         """
         Registers the name of a planet at `path`, with world name `world_name`,
         `world_type` and `biome_types`.  `sort_name` is the key the GUI will use
-        to sort, when sorting alphabetically.
+        to sort, when sorting alphabetically.  Some extra information will be
+        pulled out of `world_obj`, which should be a `StarboundData.World`
+        object.
         """
         if biome_types:
-            self.mapping[path] = (sort_name, world_name, '{}: {}'.format(world_type, biome_types))
+            self.mapping[path] = (
+                    sort_name,
+                    world_name,
+                    '{}: {}'.format(world_type, biome_types),
+                    list(sorted(world_obj.biomes)),
+                    list(sorted(world_obj.dungeons)),
+                    )
         else:
-            self.mapping[path] = (sort_name, world_name, world_type)
+            self.mapping[path] = (
+                    sort_name,
+                    world_name,
+                    world_type,
+                    list(sorted(world_obj.biomes)),
+                    list(sorted(world_obj.dungeons)),
+                    )
         self.changed = True
 
-    def register_other(self, path, world_name, extra_desc, sort_name):
+    def register_other(self, path, world_name, extra_desc, sort_name, world_obj):
         """
         Registers the name of a non-planet world at `path`, with world name
         `world_name` and `extra_desc`.  `sort_name` is the key the GUI will use
-        to sort, when sorting alphabetically.
+        to sort, when sorting alphabetically.  Some extra information will be
+        pulled out of `world_obj`, which should be a `StarboundData.World`
+        object.
         """
-        self.mapping[path] = (sort_name, world_name, extra_desc)
+        self.mapping[path] = (
+                sort_name,
+                world_name,
+                extra_desc,
+                list(sorted(world_obj.biomes)),
+                list(sorted(world_obj.dungeons)),
+                )
         self.changed = True
 
     def save(self):

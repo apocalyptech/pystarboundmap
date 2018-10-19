@@ -132,6 +132,13 @@ class HTMLWidgetHelper(object):
         self.setStyle(HTMLStyle())
         self.stored_size = None
 
+    def setText(self, text):
+        """
+        Sets text, and clears out our sizeHint so that it can update.
+        """
+        self.stored_size = None
+        super().setText(text)
+
     def sizeHint(self):
         """
         Use a QTextDocument to compute our rendered text size
@@ -1544,7 +1551,7 @@ class OpenByDialog(QtWidgets.QDialog):
     Base dialog for both of our open-by-name dialogs
     """
 
-    def __init__(self, parent, main_label, height=350):
+    def __init__(self, parent, main_label, height=350, extra_widget=None):
         super().__init__(parent)
         self.setModal(True)
         self.setSizeGripEnabled(True)
@@ -1582,14 +1589,18 @@ class OpenByDialog(QtWidgets.QDialog):
         self.sort_group.buttonClicked.connect(self.populate_buttons)
         layout.addWidget(w)
 
+        # Extra widget, if we've been given one
+        if extra_widget:
+            layout.addWidget(extra_widget, 0, QtCore.Qt.AlignCenter)
+
         # Scrolled Area
         self.scroll = QtWidgets.QScrollArea(self)
         self.scroll.setWidgetResizable(True)
 
         # Scroll Contents
-        contents = QtWidgets.QWidget(self)
+        self.contents = QtWidgets.QWidget(self)
         self.grid = QtWidgets.QGridLayout()
-        contents.setLayout(self.grid)
+        self.contents.setLayout(self.grid)
 
         # Populate contents
         self.buttons = self.generate_buttons()
@@ -1602,7 +1613,7 @@ class OpenByDialog(QtWidgets.QDialog):
 
         # Add our contents to the scroll widget
         layout.addWidget(self.scroll, 1)
-        self.scroll.setWidget(contents)
+        self.scroll.setWidget(self.contents)
 
         # Buttons
         buttonbox = QtWidgets.QDialogButtonBox(self)
@@ -1657,28 +1668,85 @@ class OpenByPlanetName(OpenByDialog):
         Ridiculous little class, but it lets us know which button was clicked, easily.
         """
 
-        def __init__(self, parent, world_name, filename, mtime, extra_text):
+        # Since space is at a premium, here's some biomes to not bother showing.
+        # We're additionally omitting anything that starts with 'underground',
+        # though that's done with a `.startswith()` call.
+        biome_blacklist = set([
+                'asteroids',
+                'atmosphere',
+                'barrenasteroids',
+                'magmarockcorelayer',
+                'moon',
+                'mooncorelayer',
+                'moonunderground',
+                'void',
+                ])
+
+        def __init__(self, parent, filename, mtime, cache):
             super().__init__(parent)
             self.parent = parent
-            self.world_name = world_name
             self.filename = filename
-            if extra_text and extra_text != '':
-                extra_display = '<br/>{}'.format(extra_text)
+            self.mtime = mtime
+            self.cache = cache
+            self.set_world_text()
+            self.clicked.connect(self.planet_clicked)
+
+        def set_world_text(self, show_details=False):
+            """
+            Sets the world text that should be visible
+            """
+
+            # Whether we have "extra" text to display
+            if self.cache.extra_desc and self.cache.extra_desc != '':
+                extra_display = '<br/>{}'.format(self.cache.extra_desc)
             else:
                 extra_display = ''
-            if os.path.basename(filename) in self.parent.player.bookmarks:
+
+            # Whether or not we're bookmarked
+            if os.path.basename(self.filename) in self.parent.player.bookmarks:
                 bookmark_extra = ' <i>(bookmarked)</i>'
             else:
                 bookmark_extra = ''
-            self.setText('<div align="center"><b>{}</b>{}{}<br/><i>{}</i></div>'.format(
-                world_name,
+
+            # These details can be toggled on/off by the user, since they're a bit
+            # noisy.
+            if show_details:
+
+                # Biomes
+                biomes_to_show = set()
+                for biome in self.cache.biomes:
+                    if biome not in self.biome_blacklist and not biome.startswith('underground'):
+                        biomes_to_show.add(biome)
+                if len(biomes_to_show) > 0:
+                    biome_text = ', '.join(sorted(biomes_to_show))
+                else:
+                    biome_text = '-'
+
+                # Dungeons
+                if len(self.cache.dungeons) > 0:
+                    dungeon_text = ', '.join(sorted(self.cache.dungeons))
+                else:
+                    dungeon_text = '-'
+
+                detail_text = '<br/>Biomes: {}<br/>Dungeons: {}'.format(biome_text, dungeon_text)
+
+            else:
+
+                detail_text = ''
+
+            # Now actually set the text
+            self.setText('<div align="center"><b>{}</b>{}{}{}<br/><i>{}</i></div>'.format(
+                self.cache.world_name,
                 bookmark_extra,
                 extra_display,
-                parent.human_date(mtime),
+                detail_text,
+                self.parent.human_date(self.mtime),
                 ))
-            self.clicked.connect(self.planet_clicked)
 
         def planet_clicked(self):
+            """
+            Process a click action
+            """
             self.parent.planet_clicked(self.filename)
 
     def __init__(self, parent, player):
@@ -1686,16 +1754,24 @@ class OpenByPlanetName(OpenByDialog):
         self.player = player
         self.parent_dialog = parent
         self.chosen_filename = None
-        super().__init__(parent, 'Open Starbound World for {}'.format(player.name), height=500)
+        details_checkbox = QtWidgets.QCheckBox('Show biome/dungeon details')
+        details_checkbox.setContentsMargins(0, 0, 0, 0)
+        super().__init__(parent,
+                'Open Starbound World for {}'.format(player.name),
+                height=500,
+                extra_widget=details_checkbox,
+                )
+        details_checkbox.clicked.connect(self.toggle_details)
+        self.button_padding = None
 
     def generate_buttons(self):
         """
         This is where the buttons get generated
         """
         buttons = []
-        for (mtime, sort_name, world_name, extra_text, filename) in self.player.get_worlds(self.parent_dialog.mainwindow.data):
-            button = OpenByPlanetName.PlanetNameButton(self, world_name, filename, mtime, extra_text)
-            buttons.append((mtime, sort_name, button))
+        for (mtime, cache_entry, filename) in self.player.get_worlds(self.parent_dialog.mainwindow.data):
+            button = OpenByPlanetName.PlanetNameButton(self, filename, mtime, cache_entry)
+            buttons.append((mtime, cache_entry.sort_name, button))
         return buttons
 
     def planet_clicked(self, filename):
@@ -1704,6 +1780,28 @@ class OpenByPlanetName(OpenByDialog):
         """
         self.parent().planet_clicked(filename)
         self.accept()
+
+    def toggle_details(self, checked):
+        """
+        Toggle details on our buttons
+        """
+        if self.button_padding is None:
+            cur_button_width = 0
+            for (_, _, button) in self.buttons:
+                cur_button_width = max(cur_button_width, button.sizeHint().width())
+            if cur_button_width != 0:
+                self.button_padding = self.width() - cur_button_width
+        button_width = 0
+        for (_, _, button) in self.buttons:
+            button.set_world_text(checked)
+            button_width = max(button_width, button.sizeHint().width())
+        if checked:
+            width = self.width()
+            if button_width != 0:
+                if self.button_padding is not None:
+                    button_width += self.button_padding
+                if width < button_width:
+                    self.resize(button_width, self.height())
 
 class OpenByPlayerName(OpenByDialog):
     """

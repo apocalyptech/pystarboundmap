@@ -601,7 +601,7 @@ class Player(object):
         """
         Given a StarboundData object `data`, returns a list of all worlds
         known to the user, as a list of tuples of the form:
-            (mtime, sortable_name, world_name, filename)
+            (mtime, config.WorldNameCache.WorldName tuple, filename)
         
         Note that this has to actually load in world files to get the names
         on the first runthrough, but we *do* now cache the name information,
@@ -618,13 +618,20 @@ class Player(object):
         ship_path = os.path.join(data.base_player, '{}.shipworld'.format(self.playerdict.data['uuid']))
         if os.path.exists(ship_path):
             if ship_path not in cache:
-                cache.register_other(ship_path, 'Starship', 'Your Starship', 'aaaaa')
+                (world, worlddf) = StarboundData.open_world(ship_path)
+                cache.register_other(
+                        ship_path,
+                        'Starship',
+                        'Your Starship',
+                        'aaaaa',
+                        world,
+                        )
+                worlddf.close()
             worlds.append((
                 os.path.getmtime(ship_path),
-                cache[ship_path].sort_name,
-                cache[ship_path].world_name,
-                cache[ship_path].extra_desc,
-                ship_path))
+                cache[ship_path],
+                ship_path,
+                ))
 
         # Loop through all systems we've explored
         for (coords, systemdict) in self.get_systems():
@@ -647,7 +654,9 @@ class Player(object):
                                         world_name=StarboundData.strip_colors(raw_name),
                                         world_type=cp['parameters']['description'],
                                         biome_types=biome_types,
-                                        sort_name=StarboundData.world_name_to_sortable(raw_name))
+                                        sort_name=StarboundData.world_name_to_sortable(raw_name),
+                                        world_obj=world,
+                                        )
                                 worlddf.close()
 
                             # This is the only way I can find to try and associate a system
@@ -660,9 +669,7 @@ class Player(object):
 
                             worlds.append((
                                 os.path.getmtime(filename),
-                                cache[filename].sort_name,
-                                cache[filename].world_name,
-                                cache[filename].extra_desc,
+                                cache[filename],
                                 filename,
                                 ))
 
@@ -675,16 +682,17 @@ class Player(object):
                         if filename not in cache:
                             if description.startswith('unique-'):
                                 description = description[7:]
+                            (world, worlddf) = StarboundData.open_world(filename)
                             cache.register_other(filename,
                                     world_name='{} - {}'.format(detected_system_name, description),
                                     extra_desc='Non-Planet System Object',
                                     sort_name='{} 99 - {}'.format(detected_system_name, description).lower(),
+                                    world_obj=world,
                                     )
+                            worlddf.close()
                         worlds.append((
                             os.path.getmtime(filename),
-                            cache[filename].sort_name,
-                            cache[filename].world_name,
-                            cache[filename].extra_desc,
+                            cache[filename],
                             filename,
                             ))
 
@@ -708,9 +716,10 @@ class StarboundData(object):
 
     class World(starbound.World):
         """
-        Overloaded World class to provide some methods I'm not sure really
-        belong in the main py-starbound World class (though we'll see if
-        they get merged in at some point.
+        Overloaded World class, originally to provide some data-access methods
+        I'm not sure really belong in the main py-starbound World class,
+        but now also to provide some of our own data correlation stuff which
+        almost certainly *doesn't* belong in the py-starbound World class.
         """
 
         def __init__(self, df, filename):
@@ -718,6 +727,36 @@ class StarboundData(object):
             self._uuid_to_region_map = None
             self.filename = filename
             self.base_filename = os.path.basename(filename)
+            self.types = set()
+            self.biomes = set()
+            self.dungeons = set()
+
+        def read_metadata(self):
+            """
+            Reads metadata, and collates some information in the metadata
+            structure, for ease of use later.
+            """
+            super().read_metadata()
+            if 'worldTemplate' in self.metadata:
+                wt = self.metadata['worldTemplate']
+                if wt:
+                    if 'celestialParameters' in wt:
+                        cp = wt['celestialParameters']
+                        if cp and 'parameters' in cp and 'terrestrialType' in cp['parameters']:
+                            self.types = set(cp['parameters']['terrestrialType'])
+                    if 'worldParameters' in wt:
+                        wp = wt['worldParameters']
+                        if wp:
+                            for key, layer in wp.items():
+                                if layer and key.endswith('Layer'):
+                                    for dungeon in layer['dungeons']:
+                                        self.dungeons.add(dungeon)
+                                    for label in ['primaryRegion', 'primarySubRegion']:
+                                        region = layer[label]
+                                        self.biomes.add(region['biome'])
+                                    for label in ['secondaryRegions', 'secondarySubRegions']:
+                                        for inner_region in layer[label]:
+                                            self.biomes.add(inner_region['biome'])
 
         @property
         def uuid_to_region_map(self):
