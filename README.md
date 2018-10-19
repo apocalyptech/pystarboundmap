@@ -75,6 +75,10 @@ extra details:
 
 [![Tile Info](screenshots/tileinfo.png)](screenshots/tileinfo.png)
 
+You can also use `Ctrl-I` or `View -> World Info` to get information about
+the world itself:
+
+[![World Info](screenshots/tileinfo.png)](screenshots/worldinfo.png)
 
 The "Navigate" menu will let you go directly to a specific coordinate, the
 spawn point, the level mech beacon (if one exists), the "current" player
@@ -178,10 +182,6 @@ TODO
  - Could use a progress bar for when reading world information on the open
    screen.  First-time reads on a player with a lot of worlds can spend a lot
    of time seemingly-frozen.
- - Should probably add the biome/dungeon information to the clickable tile
-   details dialog, but that's gonna take up an awful lot of room.  There should
-   maybe instead be a master "world info" dialog, and we could take that info
-   out of the tile info dialog altogether.
 
 LICENSE
 -------

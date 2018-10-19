@@ -160,7 +160,9 @@ class Config(object):
     app_w = 1050
     app_h = 800
     tileinfo_w = 600
-    tileinfo_h = 600
+    tileinfo_h = 500
+    worldinfo_w = 500
+    worldinfo_h = 400
     splitter = None
 
     def __init__(self):
@@ -200,6 +202,10 @@ class Config(object):
                     self.tileinfo_w = int(config['gui']['tileinfo_w'])
                 if 'tileinfo_h' in config['gui']:
                     self.tileinfo_h = int(config['gui']['tileinfo_h'])
+                if 'worldinfo_w' in config['gui']:
+                    self.worldinfo_w = int(config['gui']['worldinfo_w'])
+                if 'worldinfo_h' in config['gui']:
+                    self.worldinfo_h = int(config['gui']['worldinfo_h'])
                 if 'splitter' in config['gui']:
                     self.splitter = base64.b64decode(config['gui']['splitter'])
         else:
@@ -244,6 +250,8 @@ class Config(object):
         config['gui']['app_h'] = str(self.app_h)
         config['gui']['tileinfo_w'] = str(self.tileinfo_w)
         config['gui']['tileinfo_h'] = str(self.tileinfo_h)
+        config['gui']['worldinfo_w'] = str(self.worldinfo_w)
+        config['gui']['worldinfo_h'] = str(self.worldinfo_h)
         if self.splitter:
             config['gui']['splitter'] = base64.b64encode(self.splitter).decode('utf-8')
         with open(self.config_file, 'w') as df:

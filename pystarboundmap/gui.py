@@ -690,25 +690,19 @@ class GUIRegion(object):
         for tile in self.tiles:
             tile.toggle_plant_anchors(checked)
 
-class TileInfoDialog(QtWidgets.QDialog):
+class InfoDialog(QtWidgets.QDialog):
     """
-    Popup dialog for detailed tile info
+    Generic class for an info-display dialog
     """
 
-    def __init__(self, parent, guitile, config):
+    def __init__(self, parent, min_w, min_h, cur_w, cur_h, title):
         super().__init__(parent)
-        self.config = config
-        scene = guitile.parent
-        world = scene.world
-        data = scene.data
-        data_table = scene.mainwindow.data_table
-        tile = guitile.tile
-        title = 'Tile Information for ({:d}, {:d})'.format(guitile.x, guitile.y)
+
         self.setModal(True)
         self.setSizeGripEnabled(True)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setMinimumSize(Config.tileinfo_w, Config.tileinfo_h)
-        self.resize(config.tileinfo_w, config.tileinfo_h)
+        self.setMinimumSize(min_w, min_h)
+        self.resize(cur_w, cur_h)
         self.setWindowTitle(title)
 
         # Layout info
@@ -730,98 +724,8 @@ class TileInfoDialog(QtWidgets.QDialog):
         contents.setLayout(self.grid)
         self.cur_row = 0
 
-        # Actually populate the grid.  TODO: Taking some of this info directly
-        # from the DataTable, which is a bit unseemly.  Should push that
-        # stuff into a proper data class.
-
-        # First up: World Info
-        self.add_heading_row('World Info')
-        self.add_text_row('World Name', data_table.world_name_label.text())
-        self.add_text_row('World Type', data_table.world_type_label.text())
-        if data_table.world_extra_label.text() != '':
-            self.add_text_row('Extra Info', data_table.world_extra_label.text())
-        self.add_text_row('Filename', world.base_filename)
-        self.add_text_row('Size', '{}x{}'.format(*world.metadata['worldTemplate']['size']))
-
-        # Next: Tile Info
-        self.add_heading_row('Tile Info')
-        self.add_text_row('Region', '({:d}, {:d})'.format(guitile.region.rx, guitile.region.ry))
-        self.add_text_row('Coordinates', '({:d}, {:d})'.format(guitile.x, guitile.y))
-        self.add_lookup_text_row('Foreground Material', tile.foreground_material, data.materials)
-        self.add_lookup_text_row('Foreground Material Mod', tile.foreground_mod, data.matmods)
-        self.add_lookup_text_row('Background Material', tile.background_material, data.materials)
-        self.add_lookup_text_row('Background Material Mod', tile.background_mod, data.matmods)
-
-        # Liquids
-        if tile.liquid_level > 0:
-            extra_liquid = ' at {:d}%'.format(round(tile.liquid_level*100))
-        else:
-            extra_liquid = ''
-        self.add_lookup_text_row('Liquid', tile.liquid, data.liquids,
-                extra=extra_liquid, nothing=0)
-
-        # Plants
-        if len(guitile.plants) > 1:
-            show_index = ' {}'.format(idx+1)
-        else:
-            show_index = ''
-        for idx, (plant_desc, parts) in enumerate(guitile.plants):
-            partlist = set()
-            for (part, _) in parts:
-                partlist.add(part.pathname)
-            if len(parts) == 1:
-                plural = ''
-            else:
-                plural = 's'
-            self.add_text_row(
-                    'Plant{}'.format(show_index),
-                    '{} ({} part{})'.format(plant_desc, len(parts), plural),
-                    )
-            if len(partlist) > 0:
-                self.add_list_data(sorted(partlist))
-                self.cur_row += 1
-
-        # Objects
-        if len(guitile.objects) > 1:
-            show_index = ' {}'.format(idx+1)
-        else:
-            show_index = ''
-        for idx, (obj_data, obj_name, obj_orientation, _, entity) in enumerate(guitile.objects):
-            object_label = 'Object{}'.format(show_index)
-            self.add_text_row(
-                    object_label,
-                    '<tt>{}</tt> ({})'.format(obj_name, StarboundData.strip_colors(obj_data.info['shortdescription'])),
-                    )
-            self.add_text_data('<tt>{}</tt>'.format(obj_data.full_path))
-            self.cur_row += 1
-            orient = obj_data.get_image_path(obj_orientation)
-            if orient:
-                self.add_text_data('<tt>{}</tt>'.format(orient))
-                self.cur_row += 1
-            if 'items' in entity:
-                itemlist = []
-                for item in entity['items']:
-                    if item and 'content' in item:
-                        content = item['content']
-                        if 'parameters' in content and 'shortdescription' in content['parameters']:
-                            if content['name'] in data.items:
-                                suffix = ' ({}: {})'.format(data.items[content['name']], content['parameters']['shortdescription'])
-                            else:
-                                suffix = ' ({})'.format(content['parameters']['shortdescription'])
-                        elif content['name'] in data.items:
-                            suffix = ' ({})'.format(data.items[content['name']])
-                        else:
-                            suffix = ''
-                        itemlist.append((
-                            content['name'],
-                            content['count'],
-                            '{}x {}{}'.format(content['count'], content['name'], suffix),
-                            ))
-                if len(itemlist) > 0:
-                    self.add_list_data_row(
-                            '{} Contents'.format(object_label),
-                            [i[2] for i in sorted(itemlist)],
-                            )
+        # Populate contents
+        self.populate_contents()
 
         # Spacer at the end of the grid
         self.grid.addWidget(QtWidgets.QLabel(''), self.cur_row, 0)
@@ -839,6 +743,12 @@ class TileInfoDialog(QtWidgets.QDialog):
         buttonbox.addButton(QtWidgets.QDialogButtonBox.Ok)
         buttonbox.accepted.connect(self.close)
         layout.addWidget(buttonbox, 0, QtCore.Qt.AlignRight)
+
+    def populate_contents(self):
+        """
+        Contents of the info dialog
+        """
+        raise Exception('Implement me!')
 
     def add_heading_row(self, heading):
         """
@@ -924,6 +834,114 @@ class TileInfoDialog(QtWidgets.QDialog):
         self.grid.addWidget(scroll, self.cur_row, 1)
         return w
 
+class TileInfoDialog(InfoDialog):
+    """
+    Popup dialog for detailed tile info
+    """
+
+    def __init__(self, parent, guitile, config):
+        self.config = config
+        self.guitile = guitile
+        super().__init__(parent,
+                Config.tileinfo_w, Config.tileinfo_h,
+                config.tileinfo_w, config.tileinfo_h,
+                'Tile Information for ({:d}, {:d})'.format(guitile.x, guitile.y),
+                )
+
+    def populate_contents(self):
+        """
+        Populate the contents of the dialog
+        """
+
+        guitile = self.guitile
+        tile = guitile.tile
+        scene = guitile.parent
+        world = scene.world
+        data = scene.data
+        data_table = scene.mainwindow.data_table
+
+        # Actually populate the grid.  TODO: Taking some of this info directly
+        # from the DataTable, which is a bit unseemly.  Should push that
+        # stuff into a proper data class.
+
+        self.add_text_row('Region', '({:d}, {:d})'.format(guitile.region.rx, guitile.region.ry))
+        self.add_text_row('Coordinates', '({:d}, {:d})'.format(guitile.x, guitile.y))
+        self.add_lookup_text_row('Foreground Material', tile.foreground_material, data.materials)
+        self.add_lookup_text_row('Foreground Material Mod', tile.foreground_mod, data.matmods)
+        self.add_lookup_text_row('Background Material', tile.background_material, data.materials)
+        self.add_lookup_text_row('Background Material Mod', tile.background_mod, data.matmods)
+
+        # Liquids
+        if tile.liquid_level > 0:
+            extra_liquid = ' at {:d}%'.format(round(tile.liquid_level*100))
+        else:
+            extra_liquid = ''
+        self.add_lookup_text_row('Liquid', tile.liquid, data.liquids,
+                extra=extra_liquid, nothing=0)
+
+        # Plants
+        if len(guitile.plants) > 1:
+            show_index = ' {}'.format(idx+1)
+        else:
+            show_index = ''
+        for idx, (plant_desc, parts) in enumerate(guitile.plants):
+            partlist = set()
+            for (part, _) in parts:
+                partlist.add(part.pathname)
+            if len(parts) == 1:
+                plural = ''
+            else:
+                plural = 's'
+            self.add_text_row(
+                    'Plant{}'.format(show_index),
+                    '{} ({} part{})'.format(plant_desc, len(parts), plural),
+                    )
+            if len(partlist) > 0:
+                self.add_list_data(sorted(partlist))
+                self.cur_row += 1
+
+        # Objects
+        if len(guitile.objects) > 1:
+            show_index = ' {}'.format(idx+1)
+        else:
+            show_index = ''
+        for idx, (obj_data, obj_name, obj_orientation, _, entity) in enumerate(guitile.objects):
+            object_label = 'Object{}'.format(show_index)
+            self.add_text_row(
+                    object_label,
+                    '<tt>{}</tt> ({})'.format(obj_name, StarboundData.strip_colors(obj_data.info['shortdescription'])),
+                    )
+            self.add_text_data('<tt>{}</tt>'.format(obj_data.full_path))
+            self.cur_row += 1
+            orient = obj_data.get_image_path(obj_orientation)
+            if orient:
+                self.add_text_data('<tt>{}</tt>'.format(orient))
+                self.cur_row += 1
+            if 'items' in entity:
+                itemlist = []
+                for item in entity['items']:
+                    if item and 'content' in item:
+                        content = item['content']
+                        if 'parameters' in content and 'shortdescription' in content['parameters']:
+                            if content['name'] in data.items:
+                                suffix = ' ({}: {})'.format(data.items[content['name']], content['parameters']['shortdescription'])
+                            else:
+                                suffix = ' ({})'.format(content['parameters']['shortdescription'])
+                        elif content['name'] in data.items:
+                            suffix = ' ({})'.format(data.items[content['name']])
+                        else:
+                            suffix = ''
+                        itemlist.append((
+                            content['name'],
+                            content['count'],
+                            '{}x {}{}'.format(content['count'], content['name'], suffix),
+                            ))
+                if len(itemlist) > 0:
+                    self.add_list_data_row(
+                            '{} Contents'.format(object_label),
+                            [i[2] for i in sorted(itemlist)],
+                            )
+
     def close(self):
         """
         Handles a close event - used mostly just to save our geometry
@@ -931,6 +949,55 @@ class TileInfoDialog(QtWidgets.QDialog):
 
         self.config.tileinfo_w = self.width()
         self.config.tileinfo_h = self.height()
+        super().close()
+
+class WorldInfoDialog(InfoDialog):
+    """
+    Popup dialog for detailed world info
+    """
+
+    def __init__(self, parent, world, config):
+        self.world = world
+        self.config = config
+        self.data_table = parent.data_table
+        super().__init__(parent,
+                Config.worldinfo_w, Config.worldinfo_h,
+                config.worldinfo_w, config.worldinfo_h,
+                'World Information for {}'.format(self.data_table.world_name_label.text()),
+                )
+
+    def populate_contents(self):
+        """
+        Populate the contents of the dialog
+        """
+
+        data_table = self.data_table
+        world = self.world
+
+        self.add_text_row('World Name', data_table.world_name_label.text())
+        self.add_text_row('World Type', data_table.world_type_label.text())
+        if data_table.world_extra_label.text() != '':
+            self.add_text_row('Extra Info', data_table.world_extra_label.text())
+        self.add_text_row('Filename', world.base_filename)
+        self.add_text_row('Size', '{}x{}'.format(*world.metadata['worldTemplate']['size']))
+
+        if len(world.dungeons) > 0:
+            dungeons = self.add_text_row('Dungeons', '<br/>'.join(sorted(world.dungeons)))
+        else:
+            self.add_text_row('Dungeons', '-')
+
+        if len(world.biomes) > 0:
+            biomes = self.add_text_row('Biomes', '<br/>'.join(sorted(world.biomes)))
+        else:
+            self.add_text_row('Biomes', '-')
+
+    def close(self):
+        """
+        Handles a close event - used mostly just to save our geometry
+        """
+
+        self.config.worldinfo_w = self.width()
+        self.config.worldinfo_h = self.height()
         super().close()
 
 class MapScene(QtWidgets.QGraphicsScene):
@@ -2115,6 +2182,8 @@ class GUI(QtWidgets.QMainWindow):
 
         # View Menu
         viewmenu = menubar.addMenu('&View')
+        self.worldinfo_menu = viewmenu.addAction('&World Info', self.action_world_info, 'Ctrl+I')
+        viewmenu.addSeparator()
         viewmenu.addAction('Zoom &In', self.action_zoom_in, '+')
         viewmenu.addAction('Zoom &Out', self.action_zoom_out, '-')
 
@@ -2210,6 +2279,16 @@ class GUI(QtWidgets.QMainWindow):
         self.setMinimumSize(Config.app_w, Config.app_h)
         self.resize(self.config.app_w, self.config.app_h)
         self.set_title()
+
+    def action_world_info(self):
+        """
+        Shows a dialog with basic world information on it
+        """
+        dialog = WorldInfoDialog(self, self.world, self.config)
+        dialog.exec()
+
+        # Re-focus the main window
+        self.activateWindow()
 
     def action_set_zoom(self, value):
         """
@@ -2367,17 +2446,20 @@ class GUI(QtWidgets.QMainWindow):
             self.openfile_menu.setEnabled(True)
             self.openname_menu.setEnabled(True)
             if self.world:
+                self.worldinfo_menu.setEnabled(True)
                 self.goto_menu.setEnabled(True)
                 self.to_spawn_menu.setEnabled(True)
                 self.to_spawn_menu.setText('Go to Spawn Point ({:d}, {:d})'.format(
                     *map(int, self.world.metadata['playerStart'])))
             else:
+                self.worldinfo_menu.setEnabled(False)
                 self.goto_menu.setEnabled(False)
                 self.to_spawn_menu.setEnabled(False)
                 self.to_spawn_menu.setText('Go to Spawn Point')
         else:
             self.openfile_menu.setEnabled(False)
             self.openname_menu.setEnabled(False)
+            self.worldinfo_menu.setEnabled(False)
             self.goto_menu.setEnabled(False)
             self.to_spawn_menu.setEnabled(False)
             self.to_spawn_menu.setText('Go to Spawn Point')
