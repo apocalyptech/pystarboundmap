@@ -78,7 +78,7 @@ extra details:
 You can also use `Ctrl-I` or `View -> World Info` to get information about
 the world itself:
 
-[![World Info](screenshots/tileinfo.png)](screenshots/worldinfo.png)
+[![World Info](screenshots/worldinfo.png)](screenshots/worldinfo.png)
 
 The "Navigate" menu will let you go directly to a specific coordinate, the
 spawn point, the level mech beacon (if one exists), the "current" player
