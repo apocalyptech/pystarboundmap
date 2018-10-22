@@ -57,8 +57,9 @@ class WorldNameCache(object):
     dialog is open.
     """
 
-    cache_ver = 3
+    cache_ver = 4
     WorldName = namedtuple('WorldName', [
+        'mtime',
         'sort_name',
         'world_name',
         'extra_desc',
@@ -79,7 +80,7 @@ class WorldNameCache(object):
                         and 'mapping' in parsed_file):
                     self.mapping = parsed_file['mapping']
 
-    def register_planet(self, path, world_name, world_type, biome_types, sort_name, world_obj):
+    def register_planet(self, path, world_name, world_type, biome_types, sort_name, world_obj, mtime):
         """
         Registers the name of a planet at `path`, with world name `world_name`,
         `world_type` and `biome_types`.  `sort_name` is the key the GUI will use
@@ -88,24 +89,21 @@ class WorldNameCache(object):
         object.
         """
         if biome_types:
-            self.mapping[path] = (
-                    sort_name,
-                    world_name,
-                    '{}: {}'.format(world_type, biome_types),
-                    list(sorted(world_obj.biomes)),
-                    list(sorted(world_obj.dungeons)),
-                    )
+            extra_desc = '{}: {}'.format(world_type, biome_types)
         else:
-            self.mapping[path] = (
-                    sort_name,
-                    world_name,
-                    world_type,
-                    list(sorted(world_obj.biomes)),
-                    list(sorted(world_obj.dungeons)),
-                    )
+            extra_desc = world_type
+
+        self.mapping[path] = (
+                mtime,
+                sort_name,
+                world_name,
+                extra_desc,
+                list(sorted(world_obj.biomes)),
+                list(sorted(world_obj.dungeons)),
+                )
         self.changed = True
 
-    def register_other(self, path, world_name, extra_desc, sort_name, world_obj):
+    def register_other(self, path, world_name, extra_desc, sort_name, world_obj, mtime):
         """
         Registers the name of a non-planet world at `path`, with world name
         `world_name` and `extra_desc`.  `sort_name` is the key the GUI will use
@@ -114,6 +112,7 @@ class WorldNameCache(object):
         object.
         """
         self.mapping[path] = (
+                mtime,
                 sort_name,
                 world_name,
                 extra_desc,

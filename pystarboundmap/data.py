@@ -597,7 +597,7 @@ class Player(object):
             systemlist = v['systems']
             return systemlist
 
-    def get_worlds(self, data):
+    def get_worlds(self, data, progress_callback=None):
         """
         Given a StarboundData object `data`, returns a list of all worlds
         known to the user, as a list of tuples of the form:
@@ -606,6 +606,14 @@ class Player(object):
         Note that this has to actually load in world files to get the names
         on the first runthrough, but we *do* now cache the name information,
         so subsequent listings should be much faster.
+
+        `progress_callback` can be used to specify a function to call to update
+        the value of a progress bar as we go through (note that we do NOT
+        currently support a "real" 0 -> 100% progress bar, since the logic here
+        is a bit weird and branches off depending on what we find, as we go.
+        Tearing it apart to be able to provide a total-number-of-files-to-load-
+        from-disk count before actually processing is more work than I care to
+        deal with at the moment).
         """
 
         worlds = []
@@ -617,7 +625,8 @@ class Player(object):
         # Add in our own spaceship, if we've got it
         ship_path = os.path.join(data.base_player, '{}.shipworld'.format(self.playerdict.data['uuid']))
         if os.path.exists(ship_path):
-            if ship_path not in cache:
+            ship_mtime = os.path.getmtime(ship_path)
+            if ship_path not in cache or cache[ship_path].mtime != ship_mtime:
                 (world, worlddf) = StarboundData.open_world(ship_path)
                 cache.register_other(
                         ship_path,
@@ -625,10 +634,13 @@ class Player(object):
                         'Your Starship',
                         'aaaaa',
                         world,
+                        ship_mtime,
                         )
                 worlddf.close()
+                if progress_callback:
+                    progress_callback()
             worlds.append((
-                os.path.getmtime(ship_path),
+                ship_mtime,
                 cache[ship_path],
                 ship_path,
                 ))
@@ -642,7 +654,8 @@ class Player(object):
                 for planet in systemdict['mappedPlanets']:
                     if planet['planet'] in world_dict[base_system_name]:
                         for filename in world_dict[base_system_name][planet['planet']]:
-                            if filename not in cache:
+                            world_mtime = os.path.getmtime(filename)
+                            if filename not in cache or cache[filename].mtime != world_mtime:
                                 (world, worlddf) = StarboundData.open_world(filename)
                                 cp = world.metadata['worldTemplate']['celestialParameters']
                                 raw_name = cp['name']
@@ -656,8 +669,11 @@ class Player(object):
                                         biome_types=biome_types,
                                         sort_name=StarboundData.world_name_to_sortable(raw_name),
                                         world_obj=world,
+                                        mtime=world_mtime,
                                         )
                                 worlddf.close()
+                                if progress_callback:
+                                    progress_callback()
 
                             # This is the only way I can find to try and associate a system
                             # to its name (only really useful in the uuid checks below).  Alas!
@@ -668,7 +684,7 @@ class Player(object):
                                         cache[filename].world_name)
 
                             worlds.append((
-                                os.path.getmtime(filename),
+                                world_mtime,
                                 cache[filename],
                                 filename,
                                 ))
@@ -679,7 +695,8 @@ class Player(object):
                 for uuid in systemdict['mappedObjects'].keys():
                     if uuid in extra_uuid:
                         (filename, description) = extra_uuid[uuid]
-                        if filename not in cache:
+                        other_mtime = os.path.getmtime(filename)
+                        if filename not in cache or cache[filename].mtime != other_mtime:
                             if description.startswith('unique-'):
                                 description = description[7:]
                             (world, worlddf) = StarboundData.open_world(filename)
@@ -688,10 +705,13 @@ class Player(object):
                                     extra_desc='Non-Planet System Object',
                                     sort_name='{} 99 - {}'.format(detected_system_name, description).lower(),
                                     world_obj=world,
+                                    mtime=other_mtime,
                                     )
                             worlddf.close()
+                            if progress_callback:
+                                progress_callback()
                         worlds.append((
-                            os.path.getmtime(filename),
+                            other_mtime,
                             cache[filename],
                             filename,
                             ))
@@ -748,15 +768,20 @@ class StarboundData(object):
                         wp = wt['worldParameters']
                         if wp:
                             for key, layer in wp.items():
-                                if layer and key.endswith('Layer'):
-                                    for dungeon in layer['dungeons']:
-                                        self.dungeons.add(dungeon)
-                                    for label in ['primaryRegion', 'primarySubRegion']:
-                                        region = layer[label]
-                                        self.biomes.add(region['biome'])
-                                    for label in ['secondaryRegions', 'secondarySubRegions']:
-                                        for inner_region in layer[label]:
-                                            self.biomes.add(inner_region['biome'])
+                                if layer and (key.endswith('Layer') or key.endswith('Layers')):
+                                    if key.endswith('Layer'):
+                                        layerlist = [layer]
+                                    else:
+                                        layerlist = layer
+                                    for layer in layerlist:
+                                        for dungeon in layer['dungeons']:
+                                            self.dungeons.add(dungeon)
+                                        for label in ['primaryRegion', 'primarySubRegion']:
+                                            region = layer[label]
+                                            self.biomes.add(region['biome'])
+                                        for label in ['secondaryRegions', 'secondarySubRegions']:
+                                            for inner_region in layer[label]:
+                                                self.biomes.add(inner_region['biome'])
 
         @property
         def uuid_to_region_map(self):

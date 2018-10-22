@@ -178,9 +178,8 @@ TODO
    worth it for me, at the moment.
  - Would be nice if the zoom kept the map view centered on the mouse
    pointer, when using the keyboard zoom shortcuts
- - Could use a progress bar for when reading world information on the open
-   screen.  First-time reads on a player with a lot of worlds can spend a lot
-   of time seemingly-frozen.
+ - Would be nice if the world-info caching progress bar went from 0->100%
+   instead of being a more generic "something is happening" bar.
 
 LICENSE
 -------

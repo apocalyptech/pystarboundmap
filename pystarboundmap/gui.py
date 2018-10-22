@@ -1766,6 +1766,17 @@ class OpenByPlanetName(OpenByDialog):
             self.set_world_text()
             self.clicked.connect(self.planet_clicked)
 
+        def chunks(self, l, n):
+            """
+            Splits a list `l` into `n`-sided chunks, though the
+            very *first* one will have one less.
+
+            Adapated from https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks
+            """
+            yield l[:n-1]
+            for i in range(n-1, len(l), n):
+                yield l[i:i+n]
+
         def set_world_text(self, show_details=False):
             """
             Sets the world text that should be visible
@@ -1788,18 +1799,22 @@ class OpenByPlanetName(OpenByDialog):
             if show_details:
 
                 # Biomes
-                biomes_to_show = set()
+                biomes_to_show = []
                 for biome in self.cache.biomes:
                     if biome not in self.biome_blacklist and not biome.startswith('underground'):
-                        biomes_to_show.add(biome)
+                        biomes_to_show.append(biome)
                 if len(biomes_to_show) > 0:
-                    biome_text = ', '.join(sorted(biomes_to_show))
+                    biome_text = ',<br/>'.join(
+                            [', '.join(l) for l in self.chunks(sorted(biomes_to_show), 5)]
+                            )
                 else:
                     biome_text = '-'
 
                 # Dungeons
                 if len(self.cache.dungeons) > 0:
-                    dungeon_text = ', '.join(sorted(self.cache.dungeons))
+                    dungeon_text = ',<br/>'.join(
+                            [', '.join(l) for l in self.chunks(sorted(self.cache.dungeons), 4)]
+                            )
                 else:
                     dungeon_text = '-'
 
@@ -1828,7 +1843,9 @@ class OpenByPlanetName(OpenByDialog):
 
         self.player = player
         self.parent_dialog = parent
+        self.mainwindow = parent.mainwindow
         self.chosen_filename = None
+        self.get_world_progress = None
         details_checkbox = QtWidgets.QCheckBox('Show biome/dungeon details')
         details_checkbox.setContentsMargins(0, 0, 0, 0)
         super().__init__(parent,
@@ -1843,11 +1860,39 @@ class OpenByPlanetName(OpenByDialog):
         """
         This is where the buttons get generated
         """
+        # Put up a progress dialog
+        self.get_world_progress = QtWidgets.QProgressDialog(self.mainwindow)
+        self.get_world_progress.setWindowTitle('Caching World Information for {}'.format(self.player.name))
+        label = QtWidgets.QLabel('<b>Caching World Information for {}</b>'.format(self.player.name))
+        label.setAlignment(QtCore.Qt.AlignCenter)
+        self.get_world_progress.setLabel(label)
+        self.get_world_progress.setRange(0, 0)
+        self.get_world_progress.setModal(True)
+        self.get_world_progress.setMinimumSize(300, 100)
+        self.get_world_progress.show()
+        # TODO: This is lame - handle cancel events properly instead.
+        self.get_world_progress.setCancelButton(None)
+        self.mainwindow.app.processEvents()
+
+        # Actually do the loading
         buttons = []
-        for (mtime, cache_entry, filename) in self.player.get_worlds(self.parent_dialog.mainwindow.data):
+        for (mtime, cache_entry, filename) in self.player.get_worlds(self.parent_dialog.mainwindow.data,
+                progress_callback=self.update_get_world_progress):
             button = OpenByPlanetName.PlanetNameButton(self, filename, mtime, cache_entry)
             buttons.append((mtime, cache_entry.sort_name, button))
+
+        # Clean up and exit
+        self.get_world_progress.close()
+        self.get_world_progress = None
         return buttons
+
+    def update_get_world_progress(self):
+        """
+        Updates the progress bar we use while loading user world info.
+        """
+        if self.get_world_progress:
+            self.get_world_progress.setValue(0)
+            self.mainwindow.app.processEvents()
 
     def planet_clicked(self, filename):
         """
