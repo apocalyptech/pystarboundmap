@@ -750,6 +750,7 @@ class StarboundData(object):
             self.types = set()
             self.biomes = set()
             self.dungeons = set()
+            self.coords = (0, 0)
 
         def read_metadata(self):
             """
@@ -764,6 +765,11 @@ class StarboundData(object):
                         cp = wt['celestialParameters']
                         if cp and 'parameters' in cp and 'terrestrialType' in cp['parameters']:
                             self.types = set(cp['parameters']['terrestrialType'])
+                        if cp and 'coordinate' in cp and 'location' in cp['coordinate']:
+                            self.coords = (
+                                    cp['coordinate']['location'][0],
+                                    cp['coordinate']['location'][1],
+                                    )
                     if 'worldParameters' in wt:
                         wp = wt['worldParameters']
                         if wp:

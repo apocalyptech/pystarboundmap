@@ -975,6 +975,7 @@ class WorldInfoDialog(InfoDialog):
         world = self.world
 
         self.add_text_row('World Name', data_table.world_name_label.text())
+        self.add_text_row('Coordinates', data_table.world_coords_label.text())
         self.add_text_row('World Type', data_table.world_type_label.text())
         if data_table.world_extra_label.text() != '':
             self.add_text_row('Extra Info', data_table.world_extra_label.text())
@@ -1372,9 +1373,9 @@ class DataTable(QtWidgets.QWidget):
         self.cur_row = 0
 
         self.world_name_label = self.add_row('World')
+        self.world_coords_label = self.add_row('Coords')
         self.world_type_label = self.add_row('World Type')
         self.world_extra_label = self.add_row('Extra Info')
-        self.world_filename_label = self.add_row('Filename')
         self.world_size_label = self.add_row('Size')
 
         self.region_label = self.add_row('Region')
@@ -1410,8 +1411,11 @@ class DataTable(QtWidgets.QWidget):
     def set_world_extra(self, world_extra):
         self.world_extra_label.setText(world_extra)
 
-    def set_world_filename(self, world_filename):
-        self.world_filename_label.setText(world_filename)
+    def set_world_coords(self, x, y):
+        if x == 0 and y == 0:
+            self.world_coords_label.setText('-')
+        else:
+            self.world_coords_label.setText('({}, {})'.format(x, y))
 
     def set_world_size(self, width, height):
         self.world_size_label.setText('{}x{}'.format(width, height))
@@ -2596,7 +2600,7 @@ class GUI(QtWidgets.QMainWindow):
             base_filename = os.path.basename(filename)
             self.loaded_filename = filename
             self.set_title()
-            self.data_table.set_world_filename(base_filename)
+            self.data_table.set_world_coords(*self.world.coords)
             self.data_table.set_world_size(
                     self.world.metadata['worldTemplate']['size'][0],
                     self.world.metadata['worldTemplate']['size'][1],
