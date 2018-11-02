@@ -839,9 +839,10 @@ class TileInfoDialog(InfoDialog):
     Popup dialog for detailed tile info
     """
 
-    def __init__(self, parent, guitile, config):
+    def __init__(self, parent, guitile, config, mainwindow):
         self.config = config
         self.guitile = guitile
+        self.mainwindow = mainwindow
         super().__init__(parent,
                 Config.tileinfo_w, Config.tileinfo_h,
                 config.tileinfo_w, config.tileinfo_h,
@@ -937,6 +938,17 @@ class TileInfoDialog(InfoDialog):
                             '{}x {}{}'.format(content['count'], content['name'], suffix),
                             ))
                 if len(itemlist) > 0:
+                    contents_set = set()
+                    for (name, _, _) in itemlist:
+                        if name in contents_set:
+                            print('In-chest duplicate: {}'.format(name))
+                        contents_set.add(name)
+                    if len(self.mainwindow.contents) > 0:
+                        for name in contents_set:
+                            if name in self.mainwindow.contents:
+                                print('Duplicate from previous: {}'.format(name))
+                        print('--')
+                    self.mainwindow.contents |= contents_set
                     self.add_list_data_row(
                             '{} Contents'.format(object_label),
                             [i[2] for i in sorted(itemlist)],
@@ -1047,7 +1059,7 @@ class MapScene(QtWidgets.QGraphicsScene):
             self.moved = False
         else:
             if self.cur_hover:
-                dialog = TileInfoDialog(self.parent, self.cur_hover, self.mainwindow.config)
+                dialog = TileInfoDialog(self.parent, self.cur_hover, self.mainwindow.config, self.mainwindow)
                 dialog.exec()
 
                 # Re-focus the main window
@@ -2177,6 +2189,7 @@ class GUI(QtWidgets.QMainWindow):
         self.app = app
         self.config = config
         self.filename_arg = filename
+        self.contents = set()
 
         # Initialization stuff
         self.world = None

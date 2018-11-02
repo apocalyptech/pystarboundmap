@@ -3,6 +3,15 @@ Python Starbound Mapper
 
 Yet another Starbound mapper!
 
+**NOTE:** This branch includes some routines to check for duplicate items
+between (and inside of) chests.  Just used by myself to see if I'd had any
+duplicate clothing items that I'd missed, since it gets a little difficult
+to tell in the ingame UI.  The info just prints out on the console, and
+accumulates its contents information as you click on chests.  This feature
+isn't really intended for public use, and it's not properly integrated.  I
+don't really have plans to integrate it, either -- just keeping it out here
+because I find it personally useful for the above purpose.
+
 This project intends to be a reasonably basic Starbound map viewer, focusing on
 a few simple map introspection tasks, rather than on 100% accurate map
 rendering.  The kinds of tasks that I'd wanted out of the program were: looking
