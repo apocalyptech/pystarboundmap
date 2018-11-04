@@ -180,6 +180,7 @@ TODO
    pointer, when using the keyboard zoom shortcuts
  - Would be nice if the world-info caching progress bar went from 0->100%
    instead of being a more generic "something is happening" bar.
+ - Fossil display cabinets render completely wrong
 
 LICENSE
 -------
