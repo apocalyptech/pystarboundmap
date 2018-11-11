@@ -19,6 +19,10 @@ each other, and that objects aren't currently rendered in their correct
 orientations (or even variations, in most cases).  It doesn't yet attempt to do
 correct color tinting or the like, either.  What you see is what you get!
 
+I would, of course, be happy to accept pull requests which address any of the
+items on my TODO list, below -- or other features not on the TODO list -- but
+I'm no longer actively developing this, myself.
+
 Installation
 ------------
 
