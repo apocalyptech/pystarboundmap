@@ -3,23 +3,56 @@ Python Starbound Mapper
 
 Yet another Starbound mapper!
 
-This project intends to be a reasonably basic Starbound map viewer, focusing on
-a few simple map introspection tasks, rather than on 100% accurate map
-rendering.  The kinds of tasks that I'd wanted out of the program were: looking
-for interesting areas to head while spelunking; checking my home base for
-"holes" in the background tiles; clicking on tiles to get some detailed
-information such as the images being used, etc.  The app is nearing what I'd
-consider "feature complete" for my own personal wishlist in a Starbound map
-viewer.
+This project is a reasonably basic Starbound map viewer, focusing on a few
+simple map introspection tasks, rather than on 100% accurate map rendering.  It
+does pretty much everything that I'd been hoping to have in a viewer when
+starting out, such as: looking for interesting areas to head while spelunking;
+checking my home base for "holes" in the background tiles; clicking on tiles to
+get some detailed information such as the images being used, etc.
 
-A quick glance at the screenshots below will show that the blocks are rendered
-as simple squares rather than with all their borders, that platforms don't link
-up with each other, and that objects aren't currently rendered in their correct
+The app is far from perfect, and in specific could really use some performance
+improvements, but my time playing Starbound is more or less at an end, and my
+impetus to hack on the map viewer further is pretty much nil.  A quick glance
+at the screenshots below will show that the blocks are rendered as simple
+squares rather than with all their borders, that platforms don't link up with
+each other, and that objects aren't currently rendered in their correct
 orientations (or even variations, in most cases).  It doesn't yet attempt to do
-correct color tinting or the like, either.  I have those kinds of things on my
-TODO, but they are honestly low priority for me.
+correct color tinting or the like, either.  What you see is what you get!
 
-Uses:
+Installation
+------------
+
+Pystarboundmap requires Python 3, and is a PyQt5 app.  Python 2 is not supported.
+
+#### Installation to system / user / virtualenv
+
+The easiest way to install/use the mapper is with pip, via:
+
+    pip install pystarboundmap
+
+Note that you need a version of setuptools which understands git-based
+dependencies, since the `py-starbound` Python library for reading Starbound
+data isn't on PyPI.  (Git support in setuptools is almost certainly already
+available on your system.)  Then run it from anywhere using the
+`pystarboundmap` script:
+
+    $ pystarboundmap
+
+#### Running via local git checkout
+
+If you'd prefer to just run it from the git checkout, you can install its
+dependencies with:
+
+    $ pip install -r requirements.txt
+
+(Again, git support is required in setuptools for that to work properly.)
+Then launch the GUI with:
+
+    $ python -m pystarboundmap.gui
+
+#### Dependencies
+
+The project makes use of the following:
  - Python 3
  - python-pillow
  - PyQt5
@@ -27,22 +60,14 @@ Uses:
  - timeago
  - [py-starbound](https://github.com/blixt/py-starbound) (by blixt)
 
-Installation
-------------
-
-This section's forthcoming -- I'll eventually have this packaged up
-properly so that it can be installed via `pip`, and ideally have some
-prebundled Windows EXEs, etc.  For now, just make sure you've got a
-Python 3 environment with the above libraries installed, and run it
-right from the git checkout.
-
 Usage
 -----
 
 The game will attempt to autodetect your Starbound installation directory
-(which is *completely* untested on Windows/Mac).  If the install directory
-can't be found, the app will prompt you to choose it manually (and this
-can be changed later via the `Edit -> Settings` menu).
+(which is *completely* untested on Windows/Mac, so please let me know if that
+fails completely).  If the install directory can't be found, the app will
+prompt you to choose it manually (and this can be changed later via the `Edit
+-> Settings` menu).
 
 The default "Open" dialog will let you choose a world to open first by
 player name, and then by the world name.  You can get a more standard

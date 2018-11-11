@@ -33,6 +33,7 @@ import time
 import struct
 import timeago
 import datetime
+import argparse
 from PyQt5 import QtWidgets, QtGui, QtCore
 from .data import StarboundData
 from .config import Config
@@ -2661,3 +2662,22 @@ class Application(QtWidgets.QApplication):
 
         self.app = GUI(self, Config(), filename)
 
+def main():
+    """
+    CLI Launcher
+    """
+
+    # Arguments
+    parser = argparse.ArgumentParser(description='Python Starbound Mapper')
+    parser.add_argument('filename',
+            type=str,
+            nargs='?',
+            metavar='filename',
+            help='Filename to load')
+    args = parser.parse_args()
+
+    gui = Application(args.filename)
+    sys.exit(gui.exec_())
+
+if __name__ == '__main__':
+    main()
