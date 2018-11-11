@@ -2,4 +2,4 @@ Pillow ~= 5.3
 PyQt5 ~= 5.11
 appdirs ~= 1.4
 timeago ~= 1.0
-py-starbound
+-e git+https://github.com/blixt/py-starbound.git#egg=py-starbound
