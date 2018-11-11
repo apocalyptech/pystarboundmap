@@ -98,8 +98,8 @@ class WorldNameCache(object):
                 sort_name,
                 world_name,
                 extra_desc,
-                list(sorted(world_obj.biomes)),
-                list(sorted(world_obj.dungeons)),
+                list(sorted(world_obj.info.biomes)),
+                list(sorted(world_obj.info.dungeons)),
                 )
         self.changed = True
 
@@ -116,8 +116,8 @@ class WorldNameCache(object):
                 sort_name,
                 world_name,
                 extra_desc,
-                list(sorted(world_obj.biomes)),
-                list(sorted(world_obj.dungeons)),
+                list(sorted(world_obj.info.biomes)),
+                list(sorted(world_obj.info.dungeons)),
                 )
         self.changed = True
 

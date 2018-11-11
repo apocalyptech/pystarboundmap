@@ -657,17 +657,11 @@ class Player(object):
                             world_mtime = os.path.getmtime(filename)
                             if filename not in cache or cache[filename].mtime != world_mtime:
                                 (world, worlddf) = StarboundData.open_world(filename)
-                                cp = world.metadata['worldTemplate']['celestialParameters']
-                                raw_name = cp['name']
-                                if 'terrestrialType' in cp['parameters']:
-                                    biome_types = ', '.join(cp['parameters']['terrestrialType'])
-                                else:
-                                    biome_types = None
                                 cache.register_planet(filename,
-                                        world_name=StarboundData.strip_colors(raw_name),
-                                        world_type=cp['parameters']['description'],
-                                        biome_types=biome_types,
-                                        sort_name=StarboundData.world_name_to_sortable(raw_name),
+                                        world_name=StarboundData.strip_colors(world.info.name),
+                                        world_type=world.info.description,
+                                        biome_types=', '.join(world.info.world_biomes),
+                                        sort_name=StarboundData.world_name_to_sortable(world.info.name),
                                         world_obj=world,
                                         mtime=world_mtime,
                                         )
@@ -736,95 +730,14 @@ class StarboundData(object):
 
     class World(starbound.World):
         """
-        Overloaded World class, originally to provide some data-access methods
-        I'm not sure really belong in the main py-starbound World class,
-        but now also to provide some of our own data correlation stuff which
-        almost certainly *doesn't* belong in the py-starbound World class.
+        Simple little wrapper class because I want to keep track of the filename
+        inside the World object, which py-starbound isn't going to care about.
         """
 
-        def __init__(self, df, filename):
-            super().__init__(df)
-            self._uuid_to_region_map = None
+        def __init__(self, stream, filename):
+            super().__init__(stream)
             self.filename = filename
             self.base_filename = os.path.basename(filename)
-            self.types = set()
-            self.biomes = set()
-            self.dungeons = set()
-            self.coords = (0, 0)
-
-        def read_metadata(self):
-            """
-            Reads metadata, and collates some information in the metadata
-            structure, for ease of use later.
-            """
-            super().read_metadata()
-            if 'worldTemplate' in self.metadata:
-                wt = self.metadata['worldTemplate']
-                if wt:
-                    if 'celestialParameters' in wt:
-                        cp = wt['celestialParameters']
-                        if cp and 'parameters' in cp and 'terrestrialType' in cp['parameters']:
-                            self.types = set(cp['parameters']['terrestrialType'])
-                        if cp and 'coordinate' in cp and 'location' in cp['coordinate']:
-                            self.coords = (
-                                    cp['coordinate']['location'][0],
-                                    cp['coordinate']['location'][1],
-                                    )
-                    if 'worldParameters' in wt:
-                        wp = wt['worldParameters']
-                        if wp:
-                            for key, layer in wp.items():
-                                if layer and (key.endswith('Layer') or key.endswith('Layers')):
-                                    if key.endswith('Layer'):
-                                        layerlist = [layer]
-                                    else:
-                                        layerlist = layer
-                                    for layer in layerlist:
-                                        for dungeon in layer['dungeons']:
-                                            self.dungeons.add(dungeon)
-                                        for label in ['primaryRegion', 'primarySubRegion']:
-                                            region = layer[label]
-                                            self.biomes.add(region['biome'])
-                                        for label in ['secondaryRegions', 'secondarySubRegions']:
-                                            for inner_region in layer[label]:
-                                                self.biomes.add(inner_region['biome'])
-
-        @property
-        def uuid_to_region_map(self):
-            """
-            A dict whose keys are the UUIDs (or just IDs, in some
-            cases) of entities, and whose values are the `(rx, ry)`
-            coordinates in which that entity can be found.
-            """
-            if not self._uuid_to_region_map:
-                self._uuid_to_region_map = {}
-                for key in self.get_all_keys():
-                    (layer, rx, ry) = struct.unpack('>BHH', key)
-                    if layer == 4:
-                        stream = io.BytesIO(self.get(layer, rx, ry))
-                        num_entities = struct.unpack('B', stream.read(1))[0]
-                        for i in range(num_entities):
-                            strlen = struct.unpack('B', stream.read(1))[0]
-                            # TODO: Is utf-8 appropriate?
-                            uuid = stream.read(strlen).decode('utf-8')
-                            if uuid in self._uuid_to_region_map:
-                                # TODO: err?  Should we do this?
-                                raise Exception('UUID {} found in two regions'.format(uuid))
-                            else:
-                                self._uuid_to_region_map[uuid] = (rx, ry)
-            return self._uuid_to_region_map
-
-        def get_uuid_coords(self, uuid):
-            """
-            Returns the coordinates of the given UUID inside this map, or
-            `None` if the UUID is not found.
-            """
-            if uuid in self.uuid_to_region_map:
-                entities = self.get_entities(*self.uuid_to_region_map[uuid])
-                for entity in entities:
-                    if ('uniqueId' in entity.data and entity.data['uniqueId'] == uuid):
-                        return tuple(entity.data['tilePosition'])
-            return None
 
     world_name_sortable_conversions = [
             ('^green;I^white;', '01'),
@@ -1067,7 +980,6 @@ class StarboundData(object):
         with open(filename, 'rb') as worlddf:
             worldmm = mmap.mmap(worlddf.fileno(), 0, access=mmap.ACCESS_READ)
             world = StarboundData.World(worldmm, filename)
-            world.read_metadata()
             return (world, worldmm)
 
     @staticmethod
