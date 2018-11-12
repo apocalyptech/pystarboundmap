@@ -40,14 +40,13 @@ checkout" for now.  Was hoping this would be far more trivial!
 
     pip install pystarboundmap
 
-Note that you need a version of setuptools which understands git-based
+~~Note that you need a version of setuptools which understands git-based
 dependencies, since the `py-starbound` Python library for reading Starbound
 data isn't on PyPI.  (Git support in setuptools is almost certainly already
 available on your system.)  Then run it from anywhere using the
-`pystarboundmap` script:
+`pystarboundmap` script:~~
 
     $ pystarboundmap
-~~
 
 #### Running via local git checkout
 
