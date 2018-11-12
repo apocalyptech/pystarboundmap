@@ -12,23 +12,59 @@ isn't really intended for public use, and it's not properly integrated.  I
 don't really have plans to integrate it, either -- just keeping it out here
 because I find it personally useful for the above purpose.
 
-This project intends to be a reasonably basic Starbound map viewer, focusing on
-a few simple map introspection tasks, rather than on 100% accurate map
-rendering.  The kinds of tasks that I'd wanted out of the program were: looking
-for interesting areas to head while spelunking; checking my home base for
-"holes" in the background tiles; clicking on tiles to get some detailed
-information such as the images being used, etc.  The app is nearing what I'd
-consider "feature complete" for my own personal wishlist in a Starbound map
-viewer.
+This project is a reasonably basic Starbound map viewer, focusing on a few
+simple map introspection tasks, rather than on 100% accurate map rendering.  It
+does pretty much everything that I'd been hoping to have in a viewer when
+starting out, such as: looking for interesting areas to head while spelunking;
+checking my home base for "holes" in the background tiles; clicking on tiles to
+get some detailed information such as the images being used, etc.
 
-A quick glance at the screenshots below will show that the blocks are rendered
-as simple squares rather than with all their borders, that platforms don't link
-up with each other, and that objects aren't currently rendered in their correct
+The app is far from perfect, and in specific could really use some performance
+improvements, but my time playing Starbound is more or less at an end, and my
+impetus to hack on the map viewer further is pretty much nil.  A quick glance
+at the screenshots below will show that the blocks are rendered as simple
+squares rather than with all their borders, that platforms don't link up with
+each other, and that objects aren't currently rendered in their correct
 orientations (or even variations, in most cases).  It doesn't yet attempt to do
-correct color tinting or the like, either.  I have those kinds of things on my
-TODO, but they are honestly low priority for me.
+correct color tinting or the like, either.  What you see is what you get!
 
-Uses:
+I would, of course, be happy to accept pull requests which address any of the
+items on my TODO list, below -- or other features not on the TODO list -- but
+I'm no longer actively developing this, myself.
+
+Installation
+------------
+
+Pystarboundmap requires Python 3, and is a PyQt5 app.  Python 2 is not supported.
+
+#### Installation to system / user / virtualenv
+
+The easiest way to install/use the mapper is with pip, via:
+
+	pip install pystarboundmap
+
+Alternatively, from a git checkout you can install with the usual `setup.py` syntax:
+
+	$ python setup.py install
+
+In either case, then run it from anywhere using the pystarboundmap script:
+
+	$ pystarboundmap
+
+#### Running via local git checkout
+
+If you'd prefer to just run it from the git checkout, you can install its
+dependencies with:
+
+    $ pip install -r requirements.txt
+
+Then launch the GUI with:
+
+    $ python -m pystarboundmap.gui
+
+#### Dependencies
+
+The project makes use of the following:
  - Python 3
  - python-pillow
  - PyQt5
@@ -36,36 +72,28 @@ Uses:
  - timeago
  - [py-starbound](https://github.com/blixt/py-starbound) (by blixt)
 
-Installation
-------------
-
-This section's forthcoming -- I'll eventually have this packaged up
-properly so that it can be installed via `pip`, and ideally have some
-prebundled Windows EXEs, etc.  For now, just make sure you've got a
-Python 3 environment with the above libraries installed, and run it
-right from the git checkout.
-
 Usage
 -----
 
 The game will attempt to autodetect your Starbound installation directory
-(which is *completely* untested on Windows/Mac).  If the install directory
-can't be found, the app will prompt you to choose it manually (and this
-can be changed later via the `Edit -> Settings` menu).
+(which is *completely* untested on Windows/Mac, so please let me know if that
+fails completely).  If the install directory can't be found, the app will
+prompt you to choose it manually (and this can be changed later via the `Edit
+-> Settings` menu).
 
 The default "Open" dialog will let you choose a world to open first by
 player name, and then by the world name.  You can get a more standard
 file-opening dialog with `Ctrl-Shift-O`, but this dialog should be much
 friendlier:
 
-[![Open By Name](screenshots/open_by_world.png)](screnshots/open_by_world.png)
+[![Open By Name](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/open_by_world.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/open_by_world.png)
 
 The map will start out centered on the level spawn point, though if the
 level contains a mech beacon, it will be centered there instead (since
 levels with mech beacons generally don't have anything interesting around the
 spawn point).  Once on the main screen, the functionality is pretty basic:
 
-[![Main Window](screenshots/mainwindow.png)](screenshots/mainwindow.png)
+[![Main Window](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/mainwindow.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/mainwindow.png)
 
 The information about the currently-hovered tile will be shown on the lefthand
 side of the screen, which can be resized by dragging on the edge.  You can
@@ -82,12 +110,12 @@ blue.  Plants will be in green.
 To get more detail about a tile, click on it to bring up a dialog with the
 extra details:
 
-[![Tile Info](screenshots/tileinfo.png)](screenshots/tileinfo.png)
+[![Tile Info](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/tileinfo.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/tileinfo.png)
 
 You can also use `Ctrl-I` or `View -> World Info` to get information about
 the world itself:
 
-[![World Info](screenshots/worldinfo.png)](screenshots/worldinfo.png)
+[![World Info](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/worldinfo.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/worldinfo.png)
 
 The "Navigate" menu will let you go directly to a specific coordinate, the
 spawn point, the level mech beacon (if one exists), the "current" player
@@ -97,7 +125,7 @@ dialog rather than the by-file open dialog, in order to have bookmarks
 and/or current location in the Navigate menu -- that information is stored
 in the Player object.
 
-[![Navigate Menu](screenshots/navigate.png)](screenshots/navigate.png)
+[![Navigate Menu](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/navigate.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/navigate.png)
 
 TODO
 ----
@@ -189,6 +217,7 @@ TODO
    pointer, when using the keyboard zoom shortcuts
  - Would be nice if the world-info caching progress bar went from 0->100%
    instead of being a more generic "something is happening" bar.
+ - Fossil display cabinets render completely wrong
 
 LICENSE
 -------

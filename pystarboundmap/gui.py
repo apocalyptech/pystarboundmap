@@ -33,6 +33,7 @@ import time
 import struct
 import timeago
 import datetime
+import argparse
 from PyQt5 import QtWidgets, QtGui, QtCore
 from .data import StarboundData
 from .config import Config
@@ -992,15 +993,15 @@ class WorldInfoDialog(InfoDialog):
         if data_table.world_extra_label.text() != '':
             self.add_text_row('Extra Info', data_table.world_extra_label.text())
         self.add_text_row('Filename', world.base_filename)
-        self.add_text_row('Size', '{}x{}'.format(*world.metadata['worldTemplate']['size']))
+        self.add_text_row('Size', '{}x{}'.format(*world.info.size))
 
-        if len(world.dungeons) > 0:
-            dungeons = self.add_text_row('Dungeons', '<br/>'.join(sorted(world.dungeons)))
+        if len(world.info.dungeons) > 0:
+            dungeons = self.add_text_row('Dungeons', '<br/>'.join(sorted(world.info.dungeons)))
         else:
             self.add_text_row('Dungeons', '-')
 
-        if len(world.biomes) > 0:
-            biomes = self.add_text_row('Biomes', '<br/>'.join(sorted(world.biomes)))
+        if len(world.info.biomes) > 0:
+            biomes = self.add_text_row('Biomes', '<br/>'.join(sorted(world.info.biomes)))
         else:
             self.add_text_row('Biomes', '-')
 
@@ -1124,12 +1125,9 @@ class MapScene(QtWidgets.QGraphicsScene):
         # If there's a mech beacon in the map, center there (there will often
         # be just black space visible, otherwise) - otherwise center on the
         # spawn point
-        if 'mechbeacon' in self.world.uuid_to_region_map:
-            coords = self.world.get_uuid_coords('mechbeacon')
-            if coords:
-                self.center_on(*coords)
-            else:
-                self.center_on_spawn()
+        mechbeacon_coords = self.world.get_entity_uuid_coords('mechbeacon')
+        if mechbeacon_coords:
+            self.center_on(*mechbeacon_coords)
         else:
             self.center_on_spawn()
 
@@ -1423,11 +1421,11 @@ class DataTable(QtWidgets.QWidget):
     def set_world_extra(self, world_extra):
         self.world_extra_label.setText(world_extra)
 
+    def clear_world_coords(self):
+        self.world_coords_label.setText('-')
+
     def set_world_coords(self, x, y):
-        if x == 0 and y == 0:
-            self.world_coords_label.setText('-')
-        else:
-            self.world_coords_label.setText('({}, {})'.format(x, y))
+        self.world_coords_label.setText('({}, {})'.format(x, y))
 
     def set_world_size(self, width, height):
         self.world_size_label.setText('{}x{}'.format(width, height))
@@ -2141,7 +2139,7 @@ class GoToDialog(QtWidgets.QDialog):
         grid.addWidget(self.label_x, 0, 0, QtCore.Qt.AlignRight)
         self.spin_x = QtWidgets.QSpinBox(self)
         self.spin_x.setMinimum(0)
-        self.spin_x.setMaximum(self.world.metadata['worldTemplate']['size'][0])
+        self.spin_x.setMaximum(self.world.info.size[0])
         self.spin_x.setValue(cur_x)
         grid.addWidget(self.spin_x, 0, 1)
 
@@ -2150,7 +2148,7 @@ class GoToDialog(QtWidgets.QDialog):
         grid.addWidget(self.label_y, 1, 0, QtCore.Qt.AlignRight)
         self.spin_y = QtWidgets.QSpinBox(self)
         self.spin_y.setMinimum(0)
-        self.spin_y.setMaximum(self.world.metadata['worldTemplate']['size'][1])
+        self.spin_y.setMaximum(self.world.info.size[1])
         self.spin_y.setValue(cur_y)
         grid.addWidget(self.spin_y, 1, 1)
 
@@ -2584,7 +2582,7 @@ class GUI(QtWidgets.QMainWindow):
         ID, in some cases), and with the label `text`.  Returns the action, if
         created, or None.
         """
-        coords = self.world.get_uuid_coords(uuid)
+        coords = self.world.get_entity_uuid_coords(uuid)
         if coords:
             self.navigation_actions.append(
                     self.navmenu.addAction(
@@ -2613,11 +2611,11 @@ class GUI(QtWidgets.QMainWindow):
             base_filename = os.path.basename(filename)
             self.loaded_filename = filename
             self.set_title()
-            self.data_table.set_world_coords(*self.world.coords)
-            self.data_table.set_world_size(
-                    self.world.metadata['worldTemplate']['size'][0],
-                    self.world.metadata['worldTemplate']['size'][1],
-                    )
+            if self.world.info.coords:
+                self.data_table.set_world_coords(*self.world.info.coords[:2])
+            else:
+                self.data_table.clear_world_coords()
+            self.data_table.set_world_size(*self.world.info.size)
             # We're duplicating some work from Player.get_worlds() here, but
             # consolidating everything would be tricky, and in the end I
             # figured it wouldn't be worth it.
@@ -2630,15 +2628,10 @@ class GUI(QtWidgets.QMainWindow):
                 self.data_table.set_world_name('Starship')
                 self.data_table.set_world_type('Your Starship')
                 self.data_table.set_world_extra('')
-            elif ('worldTemplate' in self.world.metadata
-                    and 'celestialParameters' in self.world.metadata['worldTemplate']):
-                cp = self.world.metadata['worldTemplate']['celestialParameters']
-                self.data_table.set_world_name(StarboundData.strip_colors(cp['name']))
-                self.data_table.set_world_type(cp['parameters']['description'])
-                if 'terrestrialType' in cp['parameters']:
-                    self.data_table.set_world_extra(', '.join(cp['parameters']['terrestrialType']))
-                else:
-                    self.data_table.set_world_extra('')
+            elif self.world.info.name:
+                self.data_table.set_world_name(StarboundData.strip_colors(self.world.info.name))
+                self.data_table.set_world_type(self.world.info.description)
+                self.data_table.set_world_extra(', '.join(self.world.info.world_biomes))
             else:
                 self.data_table.set_world_name(base_filename)
                 self.data_table.set_world_type('Unknown')
@@ -2646,7 +2639,7 @@ class GUI(QtWidgets.QMainWindow):
             self.scene.load_map(self.world)
 
             # Jump to a Mech Beacon, if we have it
-            if 'mechbeacon' in self.world.uuid_to_region_map:
+            if self.world.get_entity_uuid_coords('mechbeacon') != None:
                 self.add_navigation_item('mechbeacon', 'Go to Mech Beacon')
 
             # Update our player-dependent navigation menu actions
@@ -2682,3 +2675,22 @@ class Application(QtWidgets.QApplication):
 
         self.app = GUI(self, Config(), filename)
 
+def main():
+    """
+    CLI Launcher
+    """
+
+    # Arguments
+    parser = argparse.ArgumentParser(description='Python Starbound Mapper')
+    parser.add_argument('filename',
+            type=str,
+            nargs='?',
+            metavar='filename',
+            help='Filename to load')
+    args = parser.parse_args()
+
+    gui = Application(args.filename)
+    sys.exit(gui.exec_())
+
+if __name__ == '__main__':
+    main()
