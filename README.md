@@ -30,6 +30,13 @@ Pystarboundmap requires Python 3, and is a PyQt5 app.  Python 2 is not supported
 
 #### Installation to system / user / virtualenv
 
+**NOTE:** This section is not actually true.  PyPI doesn't seem to play nicely
+with using git dependency sources, the support for it in the various packaging
+components seems to be haphazard and inconsistent at best, and dependent on
+the exact versions of things you're using.  So just skip to the "local git
+checkout" for now.  Was hoping this would be far more trivial!
+
+~~
 The easiest way to install/use the mapper is with pip, via:
 
     pip install pystarboundmap
@@ -41,6 +48,7 @@ available on your system.)  Then run it from anywhere using the
 `pystarboundmap` script:
 
     $ pystarboundmap
+~~
 
 #### Running via local git checkout
 
