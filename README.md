@@ -36,8 +36,7 @@ components seems to be haphazard and inconsistent at best, and dependent on
 the exact versions of things you're using.  So just skip to the "local git
 checkout" for now.  Was hoping this would be far more trivial!
 
-~~
-The easiest way to install/use the mapper is with pip, via:
+~~The easiest way to install/use the mapper is with pip, via:~~
 
     pip install pystarboundmap
 
