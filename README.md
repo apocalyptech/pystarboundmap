@@ -30,23 +30,21 @@ Pystarboundmap requires Python 3, and is a PyQt5 app.  Python 2 is not supported
 
 #### Installation to system / user / virtualenv
 
-**NOTE:** This section is not actually true.  PyPI doesn't seem to play nicely
-with using git dependency sources, the support for it in the various packaging
-components seems to be haphazard and inconsistent at best, and dependent on
-the exact versions of things you're using.  So just skip to the "local git
-checkout" for now.  Was hoping this would be far more trivial!
+I'm working on getting this into PyPI so it's installable via `pip` directly,
+but there's a few roadblocks (it seems like blixt probably has to put
+`py-starbound` on PyPI itself before I'll be able to).  Either just run via
+a local git checkout, or you can install to your system/user/venv from the git
+checkout with:
 
-~~The easiest way to install/use the mapper is with pip, via:~~
+    $ python setup.py install
 
-    ~~pip install pystarboundmap~~
-
-~~Note that you need a version of setuptools which understands git-based
+Note that you need a version of setuptools which understands git-based
 dependencies, since the `py-starbound` Python library for reading Starbound
 data isn't on PyPI.  (Git support in setuptools is almost certainly already
 available on your system.)  Then run it from anywhere using the
-`pystarboundmap` script:~~
+`pystarboundmap` script:
 
-    ~~$ pystarboundmap~~
+    $ pystarboundmap
 
 #### Running via local git checkout
 
