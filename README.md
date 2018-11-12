@@ -116,7 +116,7 @@ dialog rather than the by-file open dialog, in order to have bookmarks
 and/or current location in the Navigate menu -- that information is stored
 in the Player object.
 
-[![Navigate Menu](https://github.com/apocalyptech/pystarboundmap/blob/master/screenshots/navigate.png)](https://github.com/apocalyptech/pystarboundmap/blob/master/screenshots/navigate.png)
+[![Navigate Menu](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/navigate.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/navigate.png)
 
 TODO
 ----
