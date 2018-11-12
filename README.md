@@ -30,21 +30,17 @@ Pystarboundmap requires Python 3, and is a PyQt5 app.  Python 2 is not supported
 
 #### Installation to system / user / virtualenv
 
-I'm working on getting this into PyPI so it's installable via `pip` directly,
-but there's a few roadblocks (it seems like blixt probably has to put
-`py-starbound` on PyPI itself before I'll be able to).  Either just run via
-a local git checkout, or you can install to your system/user/venv from the git
-checkout with:
+The easiest way to install/use the mapper is with pip, via:
 
-    $ python setup.py install
+	pip install pystarboundmap
 
-Note that you need a version of setuptools which understands git-based
-dependencies, since the `py-starbound` Python library for reading Starbound
-data isn't on PyPI.  (Git support in setuptools is almost certainly already
-available on your system.)  Then run it from anywhere using the
-`pystarboundmap` script:
+Alternatively, from a git checkout you can install with the usual `setup.py` syntax:
 
-    $ pystarboundmap
+	$ python setup.py install
+
+In either case, then run it from anywhere using the pystarboundmap script:
+
+	$ pystarboundmap
 
 #### Running via local git checkout
 
@@ -53,7 +49,6 @@ dependencies with:
 
     $ pip install -r requirements.txt
 
-(Again, git support is required in setuptools for that to work properly.)
 Then launch the GUI with:
 
     $ python -m pystarboundmap.gui
@@ -82,14 +77,14 @@ player name, and then by the world name.  You can get a more standard
 file-opening dialog with `Ctrl-Shift-O`, but this dialog should be much
 friendlier:
 
-[![Open By Name](screenshots/open_by_world.png)](screnshots/open_by_world.png)
+[![Open By Name](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/open_by_world.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/open_by_world.png)
 
 The map will start out centered on the level spawn point, though if the
 level contains a mech beacon, it will be centered there instead (since
 levels with mech beacons generally don't have anything interesting around the
 spawn point).  Once on the main screen, the functionality is pretty basic:
 
-[![Main Window](screenshots/mainwindow.png)](screenshots/mainwindow.png)
+[![Main Window](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/mainwindow.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/mainwindow.png)
 
 The information about the currently-hovered tile will be shown on the lefthand
 side of the screen, which can be resized by dragging on the edge.  You can
@@ -106,12 +101,12 @@ blue.  Plants will be in green.
 To get more detail about a tile, click on it to bring up a dialog with the
 extra details:
 
-[![Tile Info](screenshots/tileinfo.png)](screenshots/tileinfo.png)
+[![Tile Info](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/tileinfo.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/tileinfo.png)
 
 You can also use `Ctrl-I` or `View -> World Info` to get information about
 the world itself:
 
-[![World Info](screenshots/worldinfo.png)](screenshots/worldinfo.png)
+[![World Info](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/worldinfo.png)](https://raw.githubusercontent.com/apocalyptech/pystarboundmap/master/screenshots/worldinfo.png)
 
 The "Navigate" menu will let you go directly to a specific coordinate, the
 spawn point, the level mech beacon (if one exists), the "current" player
@@ -121,7 +116,7 @@ dialog rather than the by-file open dialog, in order to have bookmarks
 and/or current location in the Navigate menu -- that information is stored
 in the Player object.
 
-[![Navigate Menu](screenshots/navigate.png)](screenshots/navigate.png)
+[![Navigate Menu](https://github.com/apocalyptech/pystarboundmap/blob/master/screenshots/navigate.png)](https://github.com/apocalyptech/pystarboundmap/blob/master/screenshots/navigate.png)
 
 TODO
 ----

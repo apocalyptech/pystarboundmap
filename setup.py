@@ -25,10 +25,7 @@ setup(
         'PyQt5 ~= 5.11',
         'appdirs ~= 1.4',
         'timeago ~= 1.0',
-        'py-starbound',
-        ],
-    dependency_links=[
-        'git+https://github.com/blixt/py-starbound.git#egg=py-starbound',
+        'py-starbound ~= 1.0',
         ],
     classifiers=[
         'Development Status :: 4 - Beta',
