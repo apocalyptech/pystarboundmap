@@ -32,7 +32,7 @@ Pystarboundmap requires Python 3, and is a PyQt5 app.  Python 2 is not supported
 
 The easiest way to install/use the mapper is with pip, via:
 
-	pip install pystarboundmap
+	$ pip install pystarboundmap
 
 Alternatively, from a git checkout you can install with the usual `setup.py` syntax:
 
@@ -67,7 +67,7 @@ Usage
 -----
 
 The game will attempt to autodetect your Starbound installation directory
-(which is *completely* untested on Windows/Mac, so please let me know if that
+(which is *completely* untested on Windows, so please let me know if that
 fails completely).  If the install directory can't be found, the app will
 prompt you to choose it manually (and this can be changed later via the `Edit
 -> Settings` menu).
@@ -135,8 +135,10 @@ TODO
      worth it with the current more-limited loaded set.
  - Visualization of explored areas (as defined by light sources)
  - Autodetect game location improvements
-   - Theoretically we autodetect Steam install locations now
-   - Completely untested on Windows/Mac
+   - Theoretically we autodetect Steam install locations now (Steam detection
+     on Mac has at least one success, so it's only Windows Steam dir
+     detection that's untested)
+   - Completely untested on Windows
    - Any way to detect GOG installs?
    - Any registry entries or whatever in general for Windows, which aren't
      Steam/GOG specific?
