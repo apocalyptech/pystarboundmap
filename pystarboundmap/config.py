@@ -44,7 +44,7 @@ if system == 'Windows':
     cur_os = OS_WINDOWS
     import winreg
 elif system == 'Darwin':
-    cur_os = OS_DARWIN
+    cur_os = OS_MAC
 elif system == 'Linux':
     cur_os = OS_LINUX
 else:
