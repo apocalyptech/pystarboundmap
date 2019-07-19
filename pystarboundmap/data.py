@@ -810,7 +810,7 @@ class StarboundData(object):
             obj_list = paktree.get_all_recurs_matching_ext('/tiles', 'material')
             for idx, (obj_path, obj_name) in enumerate(obj_list):
                 matpath = '{}/{}'.format(obj_path, obj_name)
-                material = json.loads(pakdata.get(matpath))
+                material = read_config(pakdata.get(matpath))
                 if 'renderTemplate' in material:
                     if material['renderTemplate'] in crop_params:
                         self.materials[material['materialId']] = Material(
@@ -830,7 +830,7 @@ class StarboundData(object):
             for idx, matmod_name in enumerate(paktree.get_all_matching_ext('/tiles/mods', '.matmod')):
                 # All matmods, at least in the base game, are classicmaterialtemplate
                 matmodpath = '/tiles/mods/{}'.format(matmod_name)
-                matmod = json.loads(pakdata.get(matmodpath))
+                matmod = read_config(pakdata.get(matmodpath))
                 self.matmods[matmod['modId']] = Matmod(matmod, matmodpath, pakdata)
 
             # Load in object data (this also populates some item names, for container reporting)
